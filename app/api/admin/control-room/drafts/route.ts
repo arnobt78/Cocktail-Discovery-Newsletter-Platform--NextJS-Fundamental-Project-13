@@ -9,7 +9,7 @@ import {
   deleteBroadcastDraft,
   updateBroadcastDraft,
 } from "@/lib/newsletter/repository";
-import type { BroadcastAudience } from "@/types/newsletter";
+import type { BroadcastAudience, BroadcastDraft } from "@/types/newsletter";
 
 async function ensureAuth(): Promise<boolean> {
   const cookieStore = await cookies();
@@ -17,7 +17,9 @@ async function ensureAuth(): Promise<boolean> {
   return verifyAdminSessionValue(sessionValue);
 }
 
-export async function PATCH(request: Request): Promise<NextResponse<{ ok: boolean; message: string }>> {
+export async function PATCH(
+  request: Request,
+): Promise<NextResponse<{ ok: boolean; message: string; draft?: BroadcastDraft }>> {
   if (!(await ensureAuth())) {
     return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
   }
@@ -54,7 +56,7 @@ export async function PATCH(request: Request): Promise<NextResponse<{ ok: boolea
     return NextResponse.json({ ok: false, message: "Draft not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, message: "Draft updated." }, { status: 200 });
+  return NextResponse.json({ ok: true, message: "Draft updated.", draft: updated }, { status: 200 });
 }
 
 export async function DELETE(request: Request): Promise<NextResponse<{ ok: boolean; message: string }>> {

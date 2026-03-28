@@ -196,6 +196,11 @@ export async function saveDeadLetter(entry: {
   });
 }
 
+export async function countDeadLetterEntries(): Promise<number> {
+  const redis = getRedisClient();
+  return redis.hlen(DEAD_LETTER_KEY);
+}
+
 export async function saveBroadcastDraft(draft: Omit<BroadcastDraft, "id" | "createdAt">): Promise<BroadcastDraft> {
   const redis = getRedisClient();
   const next: BroadcastDraft = {
@@ -236,6 +241,7 @@ export async function updateBroadcastDraft(
     ...existing,
     ...draft,
     id,
+    updatedAt: new Date().toISOString(),
   };
 
   await redis.hset(BROADCAST_DRAFT_KEY, {
@@ -330,8 +336,12 @@ export async function getBroadcastQueueItemById(id: string): Promise<BroadcastQu
 
 export async function updateBroadcastQueueItem(item: BroadcastQueueItem): Promise<void> {
   const redis = getRedisClient();
+  const next: BroadcastQueueItem = {
+    ...item,
+    updatedAt: new Date().toISOString(),
+  };
   await redis.hset(BROADCAST_QUEUE_KEY, {
-    [item.id]: JSON.stringify(item),
+    [item.id]: JSON.stringify(next),
   });
 }
 

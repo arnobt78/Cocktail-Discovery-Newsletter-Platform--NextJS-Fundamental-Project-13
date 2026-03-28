@@ -1,4 +1,5 @@
 import {
+  countDeadLetterEntries,
   getActiveSubscriberCount,
   listAllSubscribers,
   listBroadcastDrafts,
@@ -23,9 +24,10 @@ export interface ControlRoomSummary {
   recentConfirmed: NewsletterSubscriber[];
   recentPending: NewsletterSubscriber[];
   setupChecklist: Array<{ label: string; ready: boolean }>;
-  recentBroadcasts: BroadcastHistoryItem[];
-  recentDrafts: BroadcastDraft[];
-  recentQueue: BroadcastQueueItem[];
+  allDrafts: BroadcastDraft[];
+  allHistory: BroadcastHistoryItem[];
+  allQueue: BroadcastQueueItem[];
+  deadLetterCount: number;
 }
 
 export async function getControlRoomSummary(): Promise<ControlRoomSummary> {
@@ -33,17 +35,18 @@ export async function getControlRoomSummary(): Promise<ControlRoomSummary> {
     activeCount,
     allSubscribers,
     pendingSubscribers,
-    recentBroadcasts,
-    recentDrafts,
-    recentQueue,
-  ] =
-    await Promise.all([
+    allHistory,
+    allDrafts,
+    allQueue,
+    deadLetterCount,
+  ] = await Promise.all([
     getActiveSubscriberCount(),
     listAllSubscribers(),
     listPendingSubscribers(),
     listBroadcastHistory(),
     listBroadcastDrafts(),
-      listBroadcastQueue(),
+    listBroadcastQueue(),
+    countDeadLetterEntries(),
   ]);
 
   const unsubscribed = allSubscribers.filter((item) => Boolean(item.unsubscribedAt));
@@ -77,8 +80,9 @@ export async function getControlRoomSummary(): Promise<ControlRoomSummary> {
     recentConfirmed: confirmed.slice(0, 8),
     recentPending: pendingSubscribers.slice(0, 8),
     setupChecklist,
-    recentBroadcasts: recentBroadcasts.slice(0, 8),
-    recentDrafts: recentDrafts.slice(0, 8),
-    recentQueue: recentQueue.slice(0, 8),
+    allDrafts,
+    allHistory,
+    allQueue,
+    deadLetterCount,
   };
 }

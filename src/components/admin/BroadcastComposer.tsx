@@ -1,8 +1,15 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { CheckCircle2, Megaphone, Pencil, Trash2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { RippleButton } from "@/components/ui/ripple-button";
 import { activityToast } from "@/lib/activity-toast";
@@ -20,6 +27,7 @@ import type {
   BroadcastHistoryItem,
   BroadcastQueueItem,
 } from "@/types/newsletter";
+import { formatAdminDateTime } from "@/lib/admin-datetime";
 
 function isoToDatetimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -43,12 +51,18 @@ interface BroadcastComposerProps {
   initialDrafts: BroadcastDraft[];
   initialHistory: BroadcastHistoryItem[];
   initialQueue: BroadcastQueueItem[];
+  onListsChange?: (lists: {
+    drafts: BroadcastDraft[];
+    history: BroadcastHistoryItem[];
+    queue: BroadcastQueueItem[];
+  }) => void;
 }
 
 export function BroadcastComposer({
   initialDrafts,
   initialHistory,
   initialQueue,
+  onListsChange,
 }: BroadcastComposerProps) {
   const [form, setForm] = useState<FormState>({
     subject: "",
@@ -78,6 +92,10 @@ export function BroadcastComposer({
     onConfirm: null,
   });
   const composerCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onListsChange?.({ drafts, history, queue });
+  }, [drafts, history, queue, onListsChange]);
 
   function scrollComposerIntoView() {
     requestAnimationFrame(() => {
@@ -126,7 +144,11 @@ export function BroadcastComposer({
 
   function showToast(ok: boolean, message: string, title?: string) {
     activityToast({
-      icon: ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />,
+      icon: ok ? (
+        <CheckCircle2 className="h-4 w-4" />
+      ) : (
+        <XCircle className="h-4 w-4" />
+      ),
       title: title ?? (ok ? "Action completed" : "Action failed"),
       description: message,
     });
@@ -139,7 +161,11 @@ export function BroadcastComposer({
       if (editingQueueId) {
         const label = form.subject.trim() || "Untitled";
         if (!scheduledFor.trim()) {
-          showToast(false, "Pick a scheduled send time in the future.", "Schedule required");
+          showToast(
+            false,
+            "Pick a scheduled send time in the future.",
+            "Schedule required",
+          );
           return;
         }
         const response = await fetch("/api/admin/control-room/queue", {
@@ -151,7 +177,11 @@ export function BroadcastComposer({
             scheduledFor: new Date(scheduledFor).toISOString(),
           }),
         });
-        const data = (await response.json()) as { ok: boolean; message: string };
+        const data = (await response.json()) as {
+          ok: boolean;
+          message: string;
+          item?: BroadcastQueueItem;
+        };
         showToast(
           data.ok,
           data.ok ? `Queued send "${label}" was updated.` : data.message,
@@ -161,11 +191,12 @@ export function BroadcastComposer({
           setQueue((prev) =>
             prev.map((item) =>
               item.id === editingQueueId
-                ? {
+                ? (data.item ?? {
                     ...item,
                     ...form,
                     scheduledFor: new Date(scheduledFor).toISOString(),
-                  }
+                    updatedAt: new Date().toISOString(),
+                  })
                 : item,
             ),
           );
@@ -181,16 +212,28 @@ export function BroadcastComposer({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: editingDraftId, ...form }),
         });
-        const data = (await response.json()) as { ok: boolean; message: string };
+        const data = (await response.json()) as {
+          ok: boolean;
+          message: string;
+          draft?: BroadcastDraft;
+        };
         showToast(
           data.ok,
-          data.ok ? `Your campaign "${label}" was updated in place.` : data.message,
+          data.ok
+            ? `Your campaign "${label}" was updated in place.`
+            : data.message,
           data.ok ? `Draft updated — "${label}"` : "Draft update failed",
         );
         if (response.ok && data.ok) {
           setDrafts((prev) =>
             prev.map((item) =>
-              item.id === editingDraftId ? { ...item, ...form } : item,
+              item.id === editingDraftId
+                ? (data.draft ?? {
+                    ...item,
+                    ...form,
+                    updatedAt: new Date().toISOString(),
+                  })
+                : item,
             ),
           );
           setEditingDraftId(null);
@@ -198,7 +241,11 @@ export function BroadcastComposer({
         return;
       }
 
-      const payload = { ...form, mode: "bulk", scheduledFor: scheduledFor || undefined };
+      const payload = {
+        ...form,
+        mode: "bulk",
+        scheduledFor: scheduledFor || undefined,
+      };
 
       const response = await fetch("/api/admin/control-room/send-post", {
         method: "POST",
@@ -254,7 +301,11 @@ export function BroadcastComposer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: editingDraftId, ...form }),
       });
-      const data = (await response.json()) as { ok: boolean; message: string };
+      const data = (await response.json()) as {
+        ok: boolean;
+        message: string;
+        draft?: BroadcastDraft;
+      };
       showToast(
         data.ok,
         data.ok
@@ -265,7 +316,13 @@ export function BroadcastComposer({
       if (response.ok && data.ok) {
         setDrafts((prev) =>
           prev.map((item) =>
-            item.id === editingDraftId ? { ...item, ...form } : item,
+            item.id === editingDraftId
+              ? (data.draft ?? {
+                  ...item,
+                  ...form,
+                  updatedAt: new Date().toISOString(),
+                })
+              : item,
           ),
         );
       }
@@ -327,10 +384,16 @@ export function BroadcastComposer({
     const response = await fetch("/api/admin/control-room/process-queue", {
       method: "POST",
     });
-    const data = (await response.json()) as { ok: boolean; message: string; processed?: number };
+    const data = (await response.json()) as {
+      ok: boolean;
+      message: string;
+      processed?: number;
+    };
     showToast(
       data.ok,
-      data.ok ? `${data.message} Processed: ${data.processed ?? 0}` : data.message,
+      data.ok
+        ? `${data.message} Processed: ${data.processed ?? 0}`
+        : data.message,
       "Queue processing",
     );
     if (response.ok && data.ok) {
@@ -389,15 +452,16 @@ export function BroadcastComposer({
 
   async function deleteDraft(id: string) {
     const label = drafts.find((d) => d.id === id)?.subject.trim() || "Untitled";
-    const response = await fetch(`/api/admin/control-room/drafts?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      `/api/admin/control-room/drafts?id=${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+    );
     const data = (await response.json()) as { ok: boolean; message: string };
     showToast(
       data.ok,
-      data.ok
-        ? `Removed "${label}" from saved drafts.`
-        : data.message,
+      data.ok ? `Removed "${label}" from saved drafts.` : data.message,
       data.ok ? `Draft deleted — "${label}"` : "Draft delete failed",
     );
     if (response.ok && data.ok) {
@@ -419,7 +483,9 @@ export function BroadcastComposer({
       data.ok
         ? `All ${n} saved draft${n === 1 ? "" : "s"} were removed permanently.`
         : data.message,
-      data.ok ? `Cleared ${n} draft${n === 1 ? "" : "s"}` : "Delete all drafts failed",
+      data.ok
+        ? `Cleared ${n} draft${n === 1 ? "" : "s"}`
+        : "Delete all drafts failed",
     );
     if (response.ok && data.ok) {
       setDrafts([]);
@@ -428,16 +494,18 @@ export function BroadcastComposer({
   }
 
   async function deleteHistoryItem(id: string) {
-    const label = history.find((h) => h.id === id)?.subject.trim() || "Untitled";
-    const response = await fetch(`/api/admin/control-room/history?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    const label =
+      history.find((h) => h.id === id)?.subject.trim() || "Untitled";
+    const response = await fetch(
+      `/api/admin/control-room/history?id=${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+    );
     const data = (await response.json()) as { ok: boolean; message: string };
     showToast(
       data.ok,
-      data.ok
-        ? `Removed "${label}" from resend history.`
-        : data.message,
+      data.ok ? `Removed "${label}" from resend history.` : data.message,
       data.ok ? `History deleted — "${label}"` : "History delete failed",
     );
     if (response.ok && data.ok) {
@@ -456,7 +524,9 @@ export function BroadcastComposer({
       data.ok
         ? `All ${n} resend history entr${n === 1 ? "y was" : "ies were"} removed permanently.`
         : data.message,
-      data.ok ? `Cleared ${n} histor${n === 1 ? "y item" : "y items"}` : "Delete all history failed",
+      data.ok
+        ? `Cleared ${n} histor${n === 1 ? "y item" : "y items"}`
+        : "Delete all history failed",
     );
     if (response.ok && data.ok) {
       setHistory([]);
@@ -465,9 +535,12 @@ export function BroadcastComposer({
 
   async function deleteQueueItem(id: string) {
     const label = queue.find((q) => q.id === id)?.subject.trim() || "Untitled";
-    const response = await fetch(`/api/admin/control-room/queue?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      `/api/admin/control-room/queue?id=${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+    );
     const data = (await response.json()) as { ok: boolean; message: string };
     showToast(
       data.ok,
@@ -493,7 +566,9 @@ export function BroadcastComposer({
       data.ok
         ? `All ${n} scheduled queue entr${n === 1 ? "y was" : "ies were"} removed.`
         : data.message,
-      data.ok ? `Cleared ${n} queue item${n === 1 ? "" : "s"}` : "Delete all queue failed",
+      data.ok
+        ? `Cleared ${n} queue item${n === 1 ? "" : "s"}`
+        : "Delete all queue failed",
     );
     if (response.ok && data.ok) {
       setQueue([]);
@@ -501,7 +576,11 @@ export function BroadcastComposer({
     }
   }
 
-  function askConfirm(title: string, description: ReactNode, onConfirm: () => void) {
+  function askConfirm(
+    title: string,
+    description: ReactNode,
+    onConfirm: () => void,
+  ) {
     setConfirmState({
       open: true,
       title,
@@ -528,12 +607,16 @@ export function BroadcastComposer({
           return (
             <span key={d.id}>
               {i > 0 ? ", " : null}
-              <span className="font-semibold text-emerald-200/95">&ldquo;{l}&rdquo;</span>
+              <span className="font-semibold text-emerald-200/95">
+                &ldquo;{l}&rdquo;
+              </span>
             </span>
           );
         })}
-        {rest > 0 ? <span className="text-slate-400"> and {rest} more</span> : null}. This cannot be
-        undone.
+        {rest > 0 ? (
+          <span className="text-slate-400"> and {rest} more</span>
+        ) : null}
+        . This cannot be undone.
       </>
     );
   }
@@ -548,7 +631,8 @@ export function BroadcastComposer({
     return (
       <>
         Permanently delete all{" "}
-        <span className="font-semibold text-amber-200/90">{n}</span> resend history entr
+        <span className="font-semibold text-amber-200/90">{n}</span> resend
+        history entr
         {n === 1 ? "y" : "ies"}
         {": "}
         {head.map((h, i) => {
@@ -556,12 +640,16 @@ export function BroadcastComposer({
           return (
             <span key={h.id}>
               {i > 0 ? ", " : null}
-              <span className="font-semibold text-emerald-200/95">&ldquo;{l}&rdquo;</span>
+              <span className="font-semibold text-emerald-200/95">
+                &ldquo;{l}&rdquo;
+              </span>
             </span>
           );
         })}
-        {rest > 0 ? <span className="text-slate-400"> and {rest} more</span> : null}. This cannot be
-        undone.
+        {rest > 0 ? (
+          <span className="text-slate-400"> and {rest} more</span>
+        ) : null}
+        . This cannot be undone.
       </>
     );
   }
@@ -576,7 +664,8 @@ export function BroadcastComposer({
     return (
       <>
         Permanently remove all{" "}
-        <span className="font-semibold text-amber-200/90">{n}</span> scheduled entr
+        <span className="font-semibold text-amber-200/90">{n}</span> scheduled
+        entr
         {n === 1 ? "y" : "ies"}
         {": "}
         {head.map((q, i) => {
@@ -584,421 +673,535 @@ export function BroadcastComposer({
           return (
             <span key={q.id}>
               {i > 0 ? ", " : null}
-              <span className="font-semibold text-emerald-200/95">&ldquo;{l}&rdquo;</span>
+              <span className="font-semibold text-emerald-200/95">
+                &ldquo;{l}&rdquo;
+              </span>
             </span>
           );
         })}
-        {rest > 0 ? <span className="text-slate-400"> and {rest} more</span> : null}. This does not send
-        emails.
+        {rest > 0 ? (
+          <span className="text-slate-400"> and {rest} more</span>
+        ) : null}
+        . This does not send emails.
       </>
     );
   }
 
   return (
     <>
-    <div
-      ref={composerCardRef}
-      className="scroll-mt-28"
-      id="newsletter-post-composer"
-    >
-    <Card className="glass-panel border-white/15 bg-white/[0.03] p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <Megaphone className="h-5 w-5 text-cyan-200" />
-        <h2 className="text-lg font-semibold text-white">Newsletter Post Composer</h2>
-      </div>
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-slate-300">
-          Create announcements, offers, and product updates for all active subscribers.
-        </p>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {hasComposerContent ? (
-            <button
-              type="button"
-              className="text-xs font-medium text-rose-300/90 underline hover:text-rose-200"
-              onClick={clearComposerForm}
-            >
-              Clear form
-            </button>
-          ) : null}
-          {editingDraftId || editingQueueId ? (
-            <button
-              type="button"
-              className="text-xs font-medium text-slate-300 underline hover:text-slate-100"
-              onClick={cancelComposerEdit}
-            >
-              Cancel update
-            </button>
-          ) : null}
-        </div>
-      </div>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <Input
-          value={form.subject}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, subject: event.target.value }))
-          }
-          placeholder="Subject (e.g. Spring Offer - 30% Off)"
-          className="border-white/15 bg-slate-900/50 text-slate-100"
-          required
-        />
-        <Input
-          value={form.preheader}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, preheader: event.target.value }))
-          }
-          placeholder="Preheader (short summary shown in inbox)"
-          className="border-white/15 bg-slate-900/50 text-slate-100"
-          required
-        />
-        <textarea
-          value={form.body}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, body: event.target.value }))
-          }
-          placeholder="Write your message. Use line breaks for paragraphs."
-          className="min-h-36 w-full rounded-md border border-white/15 bg-slate-900/50 px-3 py-2 text-sm text-slate-100 outline-none ring-offset-2 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-          required
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            value={form.ctaLabel}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, ctaLabel: event.target.value }))
-            }
-            placeholder="CTA label (optional)"
-            className="border-white/15 bg-slate-900/50 text-slate-100"
-          />
-          <Input
-            value={form.ctaUrl}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, ctaUrl: event.target.value }))
-            }
-            placeholder="CTA URL (optional, https://...)"
-            className="border-white/15 bg-slate-900/50 text-slate-100"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-[0.2em] text-slate-300">
-            Audience
-          </label>
-          <select
-            value={form.audience}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                audience: event.target.value as BroadcastAudience,
-              }))
-            }
-            className="w-full rounded-md border border-white/15 bg-slate-900/50 px-3 py-2 text-sm text-slate-100"
-          >
-            <option value="all">All active subscribers</option>
-            <option value="recent">Only recent confirms (14 days)</option>
-            <option value="engaged">Only engaged (30 days)</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-[0.2em] text-slate-300">
-            Scheduled send time (optional)
-          </label>
-          <Input
-            type="datetime-local"
-            min={editingQueueId ? undefined : minScheduleLocal}
-            value={scheduledFor}
-            onChange={(event) => setScheduledFor(event.target.value)}
-            className="border-white/15 bg-slate-900/50 text-slate-100"
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            value={testEmail}
-            onChange={(event) => setTestEmail(event.target.value)}
-            placeholder="Test email (you@example.com)"
-            className="border-white/15 bg-slate-900/50 text-slate-100"
-          />
-          <RippleButton
-            type="button"
-            disabled={isSending}
-            onClick={() => void sendTest()}
-            className="rounded-lg border border-cyan-300/30 bg-cyan-500/75 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            Send test email to myself
-          </RippleButton>
-        </div>
-        <div
-          className={`grid gap-3 ${editingQueueId ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}
-        >
-          {!editingQueueId ? (
-            <RippleButton
-              type="button"
-              onClick={() => void saveDraft()}
-              className="rounded-lg border border-violet-300/30 bg-violet-500/70 px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              {editingDraftId ? "Save draft (overwrite)" : "Save draft"}
-            </RippleButton>
-          ) : null}
-          <RippleButton
-            type="submit"
-            disabled={isSending}
-            className="rounded-lg border border-emerald-300/30 bg-emerald-500/85 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            {editingQueueId
-              ? isSending
-                ? "Updating queue…"
-                : "Update queued send"
-              : editingDraftId
-                ? isSending
-                  ? "Updating…"
-                  : "Update draft"
-                : isSending
-                  ? "Sending post..."
-                  : "Send Post to Subscribers"}
-          </RippleButton>
-        </div>
-      </form>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-100">Saved Drafts</h3>
-            <button
-              type="button"
-              disabled={drafts.length === 0}
-              className="text-xs font-medium text-rose-300 underline hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
-              onClick={() =>
-                askConfirm("Delete all drafts", draftDeleteAllDescription(), () => {
-                  void deleteAllDrafts();
-                })
-              }
-            >
-              Delete all
-            </button>
+      <div
+        ref={composerCardRef}
+        className="scroll-mt-28"
+        id="newsletter-post-composer"
+      >
+        <Card className="glass-panel border-white/15 bg-white/[0.03] p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-cyan-200" />
+            <h2 className="text-lg font-semibold text-white">
+              Newsletter Post Composer
+            </h2>
           </div>
-          <div className="space-y-2">
-            {drafts.length === 0 ? (
-              <p className="text-sm text-slate-400">No drafts yet.</p>
-            ) : (
-              drafts.map((item) => (
-                <div key={item.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                  <p className="text-sm font-medium text-slate-100">{item.subject}</p>
-                  <p className="text-xs text-slate-400">{item.preheader}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => void resendFrom(item.id, "draft")}
-                      className="text-xs font-medium text-cyan-200 hover:text-cyan-100"
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-300">
+              Create announcements, offers, and product updates for all active
+              subscribers.
+            </p>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {hasComposerContent ? (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-rose-300/90  hover:text-rose-200"
+                  onClick={clearComposerForm}
+                >
+                  Clear form
+                </button>
+              ) : null}
+              {editingDraftId || editingQueueId ? (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-slate-300  hover:text-slate-100"
+                  onClick={cancelComposerEdit}
+                >
+                  Cancel update
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <form onSubmit={onSubmit} className="space-y-3">
+            <Input
+              value={form.subject}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, subject: event.target.value }))
+              }
+              placeholder="Subject (e.g. Spring Offer - 30% Off)"
+              className="border-white/15 bg-slate-900/50 text-slate-100"
+              required
+            />
+            <Input
+              value={form.preheader}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, preheader: event.target.value }))
+              }
+              placeholder="Preheader (short summary shown in inbox)"
+              className="border-white/15 bg-slate-900/50 text-slate-100"
+              required
+            />
+            <textarea
+              value={form.body}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, body: event.target.value }))
+              }
+              placeholder="Write your message. Use line breaks for paragraphs."
+              className="min-h-36 w-full rounded-md border border-white/15 bg-slate-900/50 px-3 py-2 text-sm text-slate-100 outline-none ring-offset-2 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              required
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                value={form.ctaLabel}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, ctaLabel: event.target.value }))
+                }
+                placeholder="CTA label (optional)"
+                className="border-white/15 bg-slate-900/50 text-slate-100"
+              />
+              <Input
+                value={form.ctaUrl}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, ctaUrl: event.target.value }))
+                }
+                placeholder="CTA URL (optional, https://...)"
+                className="border-white/15 bg-slate-900/50 text-slate-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs uppercase tracking-[0.2em] text-slate-300">
+                Audience
+              </label>
+              <select
+                value={form.audience}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    audience: event.target.value as BroadcastAudience,
+                  }))
+                }
+                className="w-full rounded-md border border-white/15 bg-slate-900/50 px-3 py-2 text-sm text-slate-100"
+              >
+                <option value="all">All active subscribers</option>
+                <option value="recent">Only recent confirms (14 days)</option>
+                <option value="engaged">Only engaged (30 days)</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs uppercase tracking-[0.2em] text-slate-300">
+                Scheduled send time (optional)
+              </label>
+              <Input
+                type="datetime-local"
+                min={editingQueueId ? undefined : minScheduleLocal}
+                value={scheduledFor}
+                onChange={(event) => setScheduledFor(event.target.value)}
+                className="border-white/15 bg-slate-900/50 text-slate-100"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                value={testEmail}
+                onChange={(event) => setTestEmail(event.target.value)}
+                placeholder="Test email (you@example.com)"
+                className="border-white/15 bg-slate-900/50 text-slate-100"
+              />
+              <RippleButton
+                type="button"
+                disabled={isSending}
+                onClick={() => void sendTest()}
+                className="rounded-lg border border-cyan-300/30 bg-cyan-500/75 px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Send test email to myself
+              </RippleButton>
+            </div>
+            <div
+              className={`grid gap-3 ${editingQueueId ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}
+            >
+              {!editingQueueId ? (
+                <RippleButton
+                  type="button"
+                  onClick={() => void saveDraft()}
+                  className="rounded-lg border border-violet-300/30 bg-violet-500/70 px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  {editingDraftId ? "Save draft (overwrite)" : "Save draft"}
+                </RippleButton>
+              ) : null}
+              <RippleButton
+                type="submit"
+                disabled={isSending}
+                className="rounded-lg border border-emerald-300/30 bg-emerald-500/85 px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                {editingQueueId
+                  ? isSending
+                    ? "Updating queue…"
+                    : "Update queued send"
+                  : editingDraftId
+                    ? isSending
+                      ? "Updating…"
+                      : "Update draft"
+                    : isSending
+                      ? "Sending post..."
+                      : "Send Post to Subscribers"}
+              </RippleButton>
+            </div>
+          </form>
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-100">
+                    Saved Drafts
+                  </h3>
+                  <Badge className="border border-violet-300/35 bg-violet-500/20 text-violet-100">
+                    {drafts.length}
+                  </Badge>
+                </div>
+                <button
+                  type="button"
+                  disabled={drafts.length === 0}
+                  className="text-xs font-medium text-rose-300  hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() =>
+                    askConfirm(
+                      "Delete all drafts",
+                      draftDeleteAllDescription(),
+                      () => {
+                        void deleteAllDrafts();
+                      },
+                    )
+                  }
+                >
+                  Delete all
+                </button>
+              </div>
+              <div className="space-y-2">
+                {drafts.length === 0 ? (
+                  <p className="text-sm text-slate-400">No drafts yet.</p>
+                ) : (
+                  drafts.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-white/10 bg-white/[0.02] p-3"
                     >
-                      Send this draft now
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-cyan-200"
-                        aria-label="Edit draft"
-                        onClick={() => loadDraftToEditor(item)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-rose-200"
-                        aria-label="Delete draft"
-                        onClick={() => {
-                          const label = item.subject.trim() || "Untitled";
-                          askConfirm(
-                            "Delete draft",
-                            <>
-                              Are you sure you want to delete this{" "}
-                              <span className="font-semibold text-emerald-200/95">&ldquo;{label}&rdquo;</span>{" "}
-                              draft?
-                            </>,
-                            () => {
-                              void deleteDraft(item.id);
-                            },
-                          );
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <p className="text-sm font-medium text-slate-100">
+                        {item.subject}
+                      </p>
+                      <p className="text-xs text-slate-400">{item.preheader}</p>
+                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                        <button
+                          type="button"
+                          onClick={() => void resendFrom(item.id, "draft")}
+                          className="shrink-0 text-left text-xs font-medium text-cyan-200 hover:text-cyan-100"
+                        >
+                          Send this draft now
+                        </button>
+                        <div className="min-w-0 flex-1 text-center text-[11px] leading-snug text-slate-400 sm:px-1">
+                          <div>
+                            Created {formatAdminDateTime(item.createdAt)}
+                          </div>
+                          {item.updatedAt ? (
+                            <div>
+                              Updated {formatAdminDateTime(item.updatedAt)}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-cyan-200"
+                            aria-label="Edit draft"
+                            onClick={() => loadDraftToEditor(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-rose-200"
+                            aria-label="Delete draft"
+                            onClick={() => {
+                              const label = item.subject.trim() || "Untitled";
+                              askConfirm(
+                                "Delete draft",
+                                <>
+                                  Are you sure you want to delete this{" "}
+                                  <span className="font-semibold text-emerald-200/95">
+                                    &ldquo;{label}&rdquo;
+                                  </span>{" "}
+                                  draft?
+                                </>,
+                                () => {
+                                  void deleteDraft(item.id);
+                                },
+                              );
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-100">
+                    Resend History
+                  </h3>
+                  <Badge className="border border-cyan-300/35 bg-cyan-500/20 text-cyan-100">
+                    {history.length}
+                  </Badge>
+                </div>
+                <button
+                  type="button"
+                  disabled={history.length === 0}
+                  className="text-xs font-medium text-rose-300  hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() =>
+                    askConfirm(
+                      "Delete all history",
+                      historyDeleteAllDescription(),
+                      () => {
+                        void deleteAllHistory();
+                      },
+                    )
+                  }
+                >
+                  Delete all
+                </button>
+              </div>
+              <div className="space-y-2">
+                {history.length === 0 ? (
+                  <p className="text-sm text-slate-400">No send history yet.</p>
+                ) : (
+                  history.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-white/10 bg-white/[0.02] p-3"
+                    >
+                      <p className="text-sm font-medium text-slate-100">
+                        {item.subject}
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                        <span>Sent: {item.sentCount}</span>
+                        <span className="text-right text-[11px] text-slate-500">
+                          Created {formatAdminDateTime(item.createdAt)} · Sent{" "}
+                          {formatAdminDateTime(item.sentAt)}
+                        </span>
+                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void resendFrom(item.id, "history")}
+                          className="text-xs font-medium text-emerald-200 hover:text-emerald-100"
+                        >
+                          Resend this campaign
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-rose-200"
+                          aria-label="Delete history"
+                          onClick={() => {
+                            const label = item.subject.trim() || "Untitled";
+                            askConfirm(
+                              "Delete history item",
+                              <>
+                                Are you sure you want to delete this{" "}
+                                <span className="font-semibold text-emerald-200/95">
+                                  &ldquo;{label}&rdquo;
+                                </span>{" "}
+                                resend history entry?
+                              </>,
+                              () => {
+                                void deleteHistoryItem(item.id);
+                              },
+                            );
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-6">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-100">
+                Scheduled Queue
+              </h3>
+              <Badge className="border border-amber-300/35 bg-amber-500/20 text-amber-100">
+                {queue.length}
+              </Badge>
+            </div>
+            <p className="mb-3 text-xs leading-relaxed text-slate-400">
+              &ldquo;Process scheduled queue&rdquo; sends only campaigns whose
+              scheduled time is{" "}
+              <span className="text-slate-300">already due</span> (past or now).
+              It does <span className="text-slate-300">not</span> send
+              future-scheduled posts early—edit the row to move the time sooner,
+              then process again after that time.
+            </p>
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <RippleButton
+                type="button"
+                onClick={() => void runQueueNow()}
+                className="rounded-lg border border-amber-300/30 bg-amber-500/75 px-4 py-2 text-sm font-semibold text-white sm:w-auto"
+              >
+                Process scheduled queue now
+              </RippleButton>
+              <button
+                type="button"
+                disabled={queue.length === 0}
+                className="text-xs font-medium text-rose-300  hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40 sm:text-right"
+                onClick={() =>
+                  askConfirm(
+                    "Delete all queue items",
+                    queueDeleteAllDescription(),
+                    () => {
+                      void deleteAllQueue();
+                    },
+                  )
+                }
+              >
+                Delete all
+              </button>
+            </div>
+            <div className="space-y-2">
+              {queue.length === 0 ? (
+                <p className="text-sm text-slate-400">No queued campaigns.</p>
+              ) : (
+                queue.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-white/10 bg-white/[0.02] p-3"
+                  >
+                    <p className="text-sm font-medium text-slate-100">
+                      {item.subject}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Schedule: {formatAdminDateTime(item.scheduledFor)} ·
+                      Status: {item.status}
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <div className="min-w-0 flex-1 text-[11px] leading-snug text-slate-400 sm:pr-2">
+                        <div>Created {formatAdminDateTime(item.createdAt)}</div>
+                        {item.updatedAt ? (
+                          <div>
+                            Updated {formatAdminDateTime(item.updatedAt)}
+                          </div>
+                        ) : null}
+                        {item.processedAt ? (
+                          <div>
+                            Processed {formatAdminDateTime(item.processedAt)}
+                          </div>
+                        ) : null}
+                        {item.status === "sent" && item.sentCount != null ? (
+                          <div>Recipients {item.sentCount}</div>
+                        ) : null}
+                        {item.status === "failed" && item.errorMessage ? (
+                          <div className="text-rose-300/90">
+                            Error: {item.errorMessage}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center justify-end gap-2">
+                        {item.status === "queued" ? (
+                          <button
+                            type="button"
+                            className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-cyan-200"
+                            aria-label="Edit queued send"
+                            onClick={() => loadQueueToEditor(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-rose-200"
+                          aria-label="Remove from queue"
+                          onClick={() => {
+                            const label = item.subject.trim() || "Untitled";
+                            askConfirm(
+                              "Remove queue item",
+                              <>
+                                Remove &ldquo;
+                                <span className="font-semibold text-emerald-200/95">
+                                  {label}
+                                </span>
+                                &rdquo; from the scheduled queue? This does not
+                                send the email.
+                              </>,
+                              () => {
+                                void deleteQueueItem(item.id);
+                              },
+                            );
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-100">Resend History</h3>
-            <button
+        </Card>
+      </div>
+      <AlertDialog open={confirmState.open}>
+        <AlertDialogOverlay />
+        <AlertDialogContent className="glass-panel border-cyan-400/30">
+          <AlertDialogHeader>
+            <div>
+              <AlertDialogTitle>{confirmState.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmState.description}
+              </AlertDialogDescription>
+            </div>
+          </AlertDialogHeader>
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <RippleButton
               type="button"
-              disabled={history.length === 0}
-              className="text-xs font-medium text-rose-300 underline hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100"
               onClick={() =>
-                askConfirm("Delete all history", historyDeleteAllDescription(), () => {
-                  void deleteAllHistory();
-                })
+                setConfirmState((prev) => ({
+                  ...prev,
+                  open: false,
+                  onConfirm: null,
+                }))
               }
             >
-              Delete all
-            </button>
+              Cancel
+            </RippleButton>
+            <RippleButton
+              type="button"
+              className="rounded-lg border border-rose-300/30 bg-rose-500/70 px-3 py-2 text-xs font-semibold text-white"
+              onClick={() => {
+                const fn = confirmState.onConfirm;
+                setConfirmState((prev) => ({
+                  ...prev,
+                  open: false,
+                  onConfirm: null,
+                }));
+                if (fn) {
+                  fn();
+                }
+              }}
+            >
+              Confirm Delete
+            </RippleButton>
           </div>
-          <div className="space-y-2">
-            {history.length === 0 ? (
-              <p className="text-sm text-slate-400">No send history yet.</p>
-            ) : (
-              history.map((item) => (
-                <div key={item.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                  <p className="text-sm font-medium text-slate-100">{item.subject}</p>
-                  <p className="text-xs text-slate-400">Sent: {item.sentCount}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => void resendFrom(item.id, "history")}
-                      className="text-xs font-medium text-emerald-200 hover:text-emerald-100"
-                    >
-                      Resend this campaign
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-rose-200"
-                      aria-label="Delete history"
-                      onClick={() => {
-                        const label = item.subject.trim() || "Untitled";
-                        askConfirm(
-                          "Delete history item",
-                          <>
-                            Are you sure you want to delete this{" "}
-                            <span className="font-semibold text-emerald-200/95">&ldquo;{label}&rdquo;</span>{" "}
-                            resend history entry?
-                          </>,
-                          () => {
-                            void deleteHistoryItem(item.id);
-                          },
-                        );
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="mt-6">
-        <h3 className="mb-2 text-sm font-semibold text-slate-100">Scheduled Queue</h3>
-        <p className="mb-3 text-xs leading-relaxed text-slate-400">
-          &ldquo;Process scheduled queue&rdquo; sends only campaigns whose scheduled time is{" "}
-          <span className="text-slate-300">already due</span> (past or now). It does{" "}
-          <span className="text-slate-300">not</span> send future-scheduled posts early—edit the row
-          to move the time sooner, then process again after that time.
-        </p>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <RippleButton
-            type="button"
-            onClick={() => void runQueueNow()}
-            className="rounded-lg border border-amber-300/30 bg-amber-500/75 px-4 py-2 text-sm font-semibold text-white sm:w-auto"
-          >
-            Process scheduled queue now
-          </RippleButton>
-          <button
-            type="button"
-            disabled={queue.length === 0}
-            className="text-xs font-medium text-rose-300 underline hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40 sm:text-right"
-            onClick={() =>
-              askConfirm("Delete all queue items", queueDeleteAllDescription(), () => {
-                void deleteAllQueue();
-              })
-            }
-          >
-            Delete all
-          </button>
-        </div>
-        <div className="space-y-2">
-          {queue.length === 0 ? (
-            <p className="text-sm text-slate-400">No queued campaigns.</p>
-          ) : (
-            queue.map((item) => (
-              <div key={item.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-                <p className="text-sm font-medium text-slate-100">{item.subject}</p>
-                <p className="text-xs text-slate-400">
-                  Schedule: {item.scheduledFor} | Status: {item.status}
-                </p>
-                <div className="mt-2 flex items-center justify-end gap-2">
-                  {item.status === "queued" ? (
-                    <button
-                      type="button"
-                      className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-cyan-200"
-                      aria-label="Edit queued send"
-                      onClick={() => loadQueueToEditor(item)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-rose-200"
-                    aria-label="Remove from queue"
-                    onClick={() => {
-                      const label = item.subject.trim() || "Untitled";
-                      askConfirm(
-                        "Remove queue item",
-                        <>
-                          Remove &ldquo;
-                          <span className="font-semibold text-emerald-200/95">{label}</span>
-                          &rdquo; from the scheduled queue? This does not send the email.
-                        </>,
-                        () => {
-                          void deleteQueueItem(item.id);
-                        },
-                      );
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </Card>
-    </div>
-    <AlertDialog open={confirmState.open}>
-      <AlertDialogOverlay />
-      <AlertDialogContent className="glass-panel border-cyan-400/30">
-        <AlertDialogHeader>
-          <div>
-            <AlertDialogTitle>{confirmState.title}</AlertDialogTitle>
-            <AlertDialogDescription>{confirmState.description}</AlertDialogDescription>
-          </div>
-        </AlertDialogHeader>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <RippleButton
-            type="button"
-            className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100"
-            onClick={() =>
-              setConfirmState((prev) => ({ ...prev, open: false, onConfirm: null }))
-            }
-          >
-            Cancel
-          </RippleButton>
-          <RippleButton
-            type="button"
-            className="rounded-lg border border-rose-300/30 bg-rose-500/70 px-3 py-2 text-xs font-semibold text-white"
-            onClick={() => {
-              const fn = confirmState.onConfirm;
-              setConfirmState((prev) => ({ ...prev, open: false, onConfirm: null }));
-              if (fn) {
-                fn();
-              }
-            }}
-          >
-            Confirm Delete
-          </RippleButton>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

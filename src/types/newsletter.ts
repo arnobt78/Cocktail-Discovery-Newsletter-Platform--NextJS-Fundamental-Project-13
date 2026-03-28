@@ -39,6 +39,7 @@ export interface BroadcastDraft {
   ctaUrl?: string;
   audience: BroadcastAudience;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface BroadcastHistoryItem extends BroadcastDraft {
@@ -52,4 +53,5 @@ export interface BroadcastQueueItem extends BroadcastDraft {
   processedAt?: string;
   sentCount?: number;
   errorMessage?: string;
+  updatedAt?: string;
 }

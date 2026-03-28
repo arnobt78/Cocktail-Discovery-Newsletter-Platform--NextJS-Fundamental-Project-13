@@ -95,7 +95,11 @@ export async function PATCH(
 
   await updateBroadcastQueueItem(next);
 
-  return NextResponse.json({ ok: true, message: "Queued campaign updated." }, { status: 200 });
+  const saved = await getBroadcastQueueItemById(payload.id.trim());
+  return NextResponse.json(
+    { ok: true, message: "Queued campaign updated.", item: saved ?? next },
+    { status: 200 },
+  );
 }
 
 export async function DELETE(request: Request): Promise<NextResponse<{ ok: boolean; message: string }>> {
