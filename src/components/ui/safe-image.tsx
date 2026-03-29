@@ -55,6 +55,7 @@ export function SafeImage({
         width={typeof width === "number" ? width : undefined}
         height={typeof height === "number" ? height : undefined}
         className={cn(className)}
+        style={rest.style}
         loading={eager ? "eager" : "lazy"}
         decoding="async"
       />

@@ -26,7 +26,7 @@ export function AboutPage() {
             <Sparkles className="h-3.5 w-3.5" />
             About
           </div>
-          <h1 className="flex items-center gap-2 text-4xl font-bold text-white font-heading">
+          <h1 className="flex items-center gap-2 text-2xl sm:text-3xl font-bold text-white font-heading">
             <FlaskConical className="h-8 w-8 text-emerald-200" />
             About Us
           </h1>

@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-query": "^5.74.11",
     "@tanstack/react-query-devtools": "^5.74.11",
     "@upstash/redis": "^1.37.0",

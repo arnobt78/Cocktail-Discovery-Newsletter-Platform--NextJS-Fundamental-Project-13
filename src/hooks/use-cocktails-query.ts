@@ -12,6 +12,8 @@ export function useCocktailsQuery(
     queryKey: ["cocktails", searchTerm || "a"],
     queryFn: () => fetchCocktails(searchTerm),
     initialData,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -23,5 +25,7 @@ export function useSingleCocktailQuery(
     queryKey: ["cocktail", id],
     queryFn: () => fetchSingleCocktail(id),
     initialData,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }

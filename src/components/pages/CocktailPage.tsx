@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSingleCocktailQuery } from "@/hooks/use-cocktails-query";
-import { SafeImage } from "@/components/ui/safe-image";
+import { CocktailHeroMedia } from "@/components/ui/cocktail-card-media";
 import { Badge } from "@/components/ui/badge";
 import { RippleButton } from "@/components/ui/ripple-button";
 import type { CocktailDetail } from "@/types/cocktail";
@@ -44,10 +44,14 @@ export function CocktailPage({ id, initialCocktail }: CocktailPageProps) {
   function toggleFavorite(currentId: string, label: string) {
     setFavorites((prev) => {
       const exists = prev.includes(currentId);
-      const next = exists ? prev.filter((item) => item !== currentId) : [...prev, currentId];
+      const next = exists
+        ? prev.filter((item) => item !== currentId)
+        : [...prev, currentId];
       activityToast({
         id: "favorites-activity",
-        icon: <Heart className={`h-4 w-4 ${exists ? "" : "fill-emerald-300"}`} />,
+        icon: (
+          <Heart className={`h-4 w-4 ${exists ? "" : "fill-emerald-300"}`} />
+        ),
         title: exists ? "Removed from favorites" : "Added to favorites",
         description: `${label} • Total favorites: ${next.length}`,
       });
@@ -109,7 +113,7 @@ export function CocktailPage({ id, initialCocktail }: CocktailPageProps) {
         className="mb-8 flex items-center justify-between gap-4"
       >
         <div className="inline-flex items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-100 font-heading">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-100 font-heading">
             {data.name}
           </h1>
           <RippleButton
@@ -118,7 +122,11 @@ export function CocktailPage({ id, initialCocktail }: CocktailPageProps) {
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-slate-900/45 text-slate-100"
             aria-label="Copy cocktail name"
           >
-            {copiedTitle ? <Check className="h-4 w-4 text-emerald-200" /> : <Copy className="h-4 w-4" />}
+            {copiedTitle ? (
+              <Check className="h-4 w-4 text-emerald-200" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </RippleButton>
         </div>
         <Link
@@ -135,22 +143,11 @@ export function CocktailPage({ id, initialCocktail }: CocktailPageProps) {
           initial={{ opacity: 0, x: -32 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          <div className="glass-panel relative h-[20rem] w-full overflow-hidden rounded-[24px] border-white/15 sm:h-[26rem]">
-            <SafeImage
+          <div className="glass-panel relative w-full overflow-hidden rounded-[24px] border-white/15">
+            <CocktailHeroMedia
               src={data.image}
               alt={data.name}
-              fill
-              className="object-cover blur-sm scale-110 opacity-45"
               sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
-            />
-            <SafeImage
-              src={data.image}
-              alt={data.name}
-              fill
-              className="object-contain p-2"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
             />
             <div className="absolute right-3 top-3 z-20">
               <RippleButton
@@ -177,7 +174,9 @@ export function CocktailPage({ id, initialCocktail }: CocktailPageProps) {
           className="glass-panel space-y-4 rounded-[24px] border-white/15 p-6 text-base leading-relaxed text-slate-100"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-300">Cocktail details</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-slate-300">
+              Cocktail details
+            </p>
             <RippleButton
               type="button"
               onClick={() => copyDetails(data)}

@@ -1,21 +1,27 @@
 "use client";
 
-import type { PropsWithChildren, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, PropsWithChildren, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface AlertDialogProps extends PropsWithChildren {
   open: boolean;
+  className?: string;
 }
 
-export function AlertDialog({ open, children }: AlertDialogProps) {
+export function AlertDialog({ open, children, className }: AlertDialogProps) {
   if (!open) {
     return null;
   }
 
-  return <div className="fixed inset-0 z-[70]">{children}</div>;
+  return (
+    <div className={cn("fixed inset-0 z-[70]", className)}>{children}</div>
+  );
 }
 
-export function AlertDialogOverlay({ className }: { className?: string }) {
+export function AlertDialogOverlay({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"div">) {
   return (
     <div
       className={cn(
@@ -23,6 +29,7 @@ export function AlertDialogOverlay({ className }: { className?: string }) {
         "shadow-[inset_0_0_120px_rgba(2,6,23,0.85)]",
         className,
       )}
+      {...props}
     />
   );
 }
@@ -30,7 +37,8 @@ export function AlertDialogOverlay({ className }: { className?: string }) {
 export function AlertDialogContent({
   className,
   children,
-}: PropsWithChildren<{ className?: string }>) {
+  ...props
+}: PropsWithChildren<{ className?: string } & ComponentPropsWithoutRef<"div">>) {
   return (
     <div
       className={cn(
@@ -40,6 +48,7 @@ export function AlertDialogContent({
         "sm:w-full",
         className,
       )}
+      {...props}
     >
       {children}
     </div>

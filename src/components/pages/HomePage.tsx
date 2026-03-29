@@ -23,7 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SafeImage } from "@/components/ui/safe-image";
+import { CocktailCardMedia } from "@/components/ui/cocktail-card-media";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,11 @@ import { useCocktailsQuery } from "@/hooks/use-cocktails-query";
 import type { CocktailCardItem } from "@/types/cocktail";
 import { activityToast } from "@/lib/activity-toast";
 import { getFavoriteIds, setFavoriteIds } from "@/lib/favorites-storage";
+import {
+  containerMotion,
+  itemMotion,
+  panelLiftMotion,
+} from "@/lib/page-motion-variants";
 
 interface HomePageProps {
   initialDrinks: CocktailCardItem[];
@@ -42,19 +47,6 @@ interface HomePageProps {
 type SortMode = "a-z" | "z-a";
 type ViewMode = "cozy" | "compact";
 
-const containerMotion = {
-  hidden: { opacity: 0, y: 24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
-  },
-};
-
-const itemMotion = {
-  hidden: { opacity: 0, y: 18 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
 const EMPTY_FAVORITES: string[] = [];
 
 export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
@@ -87,10 +79,12 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
     () => (searchTerm === initialSearchTerm ? initialDrinks : []),
     [initialDrinks, initialSearchTerm, searchTerm],
   );
-  const { data: drinks, isFetching } = useCocktailsQuery(
-    searchTerm,
-    initialData,
-  );
+  const {
+    data: drinks = [],
+    isFetching,
+    isPending,
+  } = useCocktailsQuery(searchTerm, initialData);
+  const showDrinksSkeleton = isPending || (isFetching && drinks.length === 0);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,7 +95,9 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
     activityToast({
       icon: <Clipboard className="h-4 w-4" />,
       title: "Search applied",
-      description: value ? `Showing results for "${value}"` : "Showing all cocktails",
+      description: value
+        ? `Showing results for "${value}"`
+        : "Showing all cocktails",
     });
   }
 
@@ -164,7 +160,9 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
       const next = exists ? prev.filter((item) => item !== id) : [...prev, id];
       activityToast({
         id: "favorites-activity",
-        icon: <Heart className={`h-4 w-4 ${exists ? "" : "fill-emerald-300"}`} />,
+        icon: (
+          <Heart className={`h-4 w-4 ${exists ? "" : "fill-emerald-300"}`} />
+        ),
         title: exists ? "Removed from favorites" : "Added to favorites",
         description: `Total favorites: ${next.length}`,
       });
@@ -185,18 +183,44 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
   return (
     <section className="mx-auto w-full max-w-9xl px-4 py-8 sm:px-8">
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+        {...panelLiftMotion}
         className="glass-panel mb-8 rounded-[26px] border-emerald-300/20 p-6 shadow-[0_25px_80px_rgba(16,185,129,0.2)] sm:p-6"
       >
-        <div className="mb-5 flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-emerald-200">
-            <Sparkles className="h-3.5 w-3.5" />
+        <div className="mb-6 flex flex-col gap-2 sm:mb-8 sm:gap-3">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-emerald-200">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Discover
           </span>
-          <h1 className="text-md font-semibold text-white sm:text-xl font-heading">
-            Find your next favorite cocktail
-          </h1>
+          <div className="flex flex-row flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 max-w-full flex-1 space-y-2 pr-2">
+              <h1 className="text-2xl font-semibold leading-[1.15] tracking-tight text-white sm:text-3xl font-heading">
+                Find your next favorite cocktail
+              </h1>
+              <p className="text-base leading-relaxed text-slate-300">
+                Search TheCocktailDB, layer filters by glass and spirit, then
+                save hearts for the recipes you actually want behind the bar.
+              </p>
+            </div>
+            <div
+              className="flex h-10 w-fit shrink-0 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-950/35 px-3.5 text-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:h-11 sm:px-4"
+              title={`${visibleDrinks.length} cards visible of ${filteredDrinks.length} after filters`}
+            >
+              <Layers3
+                className="h-4 w-4 shrink-0 text-emerald-400/80"
+                aria-hidden
+              />
+              <span className="text-sm font-semibold tabular-nums sm:text-base">
+                <span className="text-white">{visibleDrinks.length}</span>
+                <span className="mx-0.5 text-emerald-400/70">/</span>
+                <span className="text-emerald-200/90">
+                  {filteredDrinks.length}
+                </span>
+              </span>
+              <span className="text-[0.65rem] font-medium uppercase tracking-wider text-emerald-500/80">
+                view
+              </span>
+            </div>
+          </div>
         </div>
 
         <motion.form
@@ -321,18 +345,26 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
             </select>
           </label>
 
-          <div className="cta-shine-wrap rounded-lg">
-            <RippleButton
-              type="submit"
-              className="cta-shine-button inline-flex h-11 items-center gap-2 rounded-lg border border-emerald-300/40 bg-gradient-to-r from-emerald-500/80 via-emerald-500/60 to-cyan-500/60 px-5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(16,185,129,0.45)]"
+          <div className="flex w-full min-w-0 flex-col justify-end">
+            <span
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-transparent select-none"
+              aria-hidden
             >
-              <Search className="h-4 w-4" />
-              Search
-            </RippleButton>
+              &nbsp;
+            </span>
+            <div className="cta-shine-wrap rounded-lg">
+              <RippleButton
+                type="submit"
+                className="cta-shine-button inline-flex h-11 w-full min-w-[7.5rem] items-center justify-center gap-2 rounded-lg border border-emerald-300/40 bg-gradient-to-r from-emerald-500/80 via-emerald-500/60 to-cyan-500/60 px-5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(16,185,129,0.45)] sm:w-auto"
+              >
+                <Search className="h-4 w-4 shrink-0" />
+                Search
+              </RippleButton>
+            </div>
           </div>
         </motion.form>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(5,minmax(0,1fr))]">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
           <RippleButton
             type="button"
             onClick={() =>
@@ -354,7 +386,9 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
               setVisibleCount(9);
               activityToast({
                 icon: <Heart className="h-4 w-4" />,
-                title: !showFavoritesOnly ? "Favorites view enabled" : "Favorites view disabled",
+                title: !showFavoritesOnly
+                  ? "Favorites view enabled"
+                  : "Favorites view disabled",
                 description: !showFavoritesOnly
                   ? "Showing only your favorite cocktails"
                   : "Showing all cocktails",
@@ -391,19 +425,16 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
           >
             Reset All Filters
           </RippleButton>
-          <div className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-300/20 bg-emerald-400/10 px-3 text-sm font-semibold text-emerald-100">
-            Showing {visibleDrinks.length} of {filteredDrinks.length}
-          </div>
         </div>
       </motion.div>
 
-      {!isFetching && filteredDrinks.length === 0 ? (
+      {!showDrinksSkeleton && filteredDrinks.length === 0 ? (
         <p className="text-center text-lg font-semibold text-slate-300">
           No matching cocktails found...
         </p>
       ) : null}
 
-      {isFetching ? (
+      {showDrinksSkeleton ? (
         <div
           className={`grid w-full gap-6 ${
             viewMode === "cozy"
@@ -439,20 +470,11 @@ export function HomePage({ initialDrinks, initialSearchTerm }: HomePageProps) {
               initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <Card className="glass-panel min-h-[30rem] h-full overflow-hidden rounded-[28px] border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_30px_80px_rgba(15,23,42,0.55)]">
-                <div className="relative h-56 w-full overflow-hidden bg-gradient-to-br from-slate-900/70 via-slate-800/60 to-emerald-950/40">
-                  <SafeImage
+              <Card className="glass-panel min-h-[30rem] min-w-0 h-full overflow-hidden rounded-[28px] border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_30px_80px_rgba(15,23,42,0.55)]">
+                <div className="relative">
+                  <CocktailCardMedia
                     src={drink.image}
                     alt={drink.name}
-                    fill
-                    className="object-cover blur-sm scale-110 opacity-45"
-                    sizes="(max-width: 1200px) 100vw, 33vw"
-                  />
-                  <SafeImage
-                    src={drink.image}
-                    alt={drink.name}
-                    fill
-                    className="object-contain p-2"
                     sizes="(max-width: 1200px) 100vw, 33vw"
                   />
                   <div className="absolute right-3 top-3 z-20">

@@ -121,3 +121,27 @@ body {
 .animate-ripple {
   animation: ripple 650ms ease-out forwards;
 }
+
+/* Admin list panels: full-width content, no reserved gutter; thumb only (track transparent) */
+.admin-scroll-panel {
+  scrollbar-gutter: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.admin-scroll-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-scroll-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-scroll-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.admin-scroll-panel:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.55);
+}

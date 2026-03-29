@@ -33,7 +33,7 @@ Use this pattern in **any Next.js App Router project** where you show **remote i
 
 3. **Copy the component** — place as e.g. `src/components/ui/safe-image.tsx` (or `Components/ui/safe-image.tsx`). Fix import paths (`@/lib/utils` → your alias).
 
-4. **ESLint** — `@next/next/no-img-element` may warn on the fallback `<img>` lines; keep the **inline eslint-disable** comments (they document *why* `<img>` is intentional).
+4. **ESLint** — `@next/next/no-img-element` may warn on the fallback `<img>` lines; keep the **inline eslint-disable** comments (they document _why_ `<img>` is intentional).
 
 5. **Usage** — import `SafeImage` anywhere you would use `<Image>` for **remote** URLs:
 
@@ -153,12 +153,12 @@ export function SafeImage({
 
 ## Behaviour summary
 
-| Stage | What happens |
-| ----- | ------------ |
-| First render | Renders Next.js **`<Image>`** (optimization, `srcset`, etc.). |
-| Load succeeds | Same as normal `next/image`. |
-| Load fails | `onError` runs → state flips → **`<img>`** with **original string `src`** (browser loads URL directly; **not** via `/_next/image`). |
-| Optional `onError` prop | Still called before switching to native img. |
+| Stage                   | What happens                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| First render            | Renders Next.js **`<Image>`** (optimization, `srcset`, etc.).                                                                       |
+| Load succeeds           | Same as normal `next/image`.                                                                                                        |
+| Load fails              | `onError` runs → state flips → **`<img>`** with **original string `src`** (browser loads URL directly; **not** via `/_next/image`). |
+| Optional `onError` prop | Still called before switching to native img.                                                                                        |
 
 ---
 

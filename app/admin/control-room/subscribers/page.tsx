@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { AdminAccessDialog } from "@/components/admin/AdminAccessDialog";
-import { AdminOverviewPageSkeleton } from "@/components/admin/admin-control-room-skeletons";
-import { ControlRoomOverviewContent } from "@/components/admin/control-room-async-segments";
+import { AdminSubscribersPageSkeleton } from "@/components/admin/admin-control-room-skeletons";
+import { ControlRoomSubscribersContent } from "@/components/admin/control-room-async-segments";
 import { getAdminShellGate } from "@/lib/admin-shell-gate";
 
-export default async function ControlRoomPage() {
+export default async function ControlRoomSubscribersPage() {
   const shell = await getAdminShellGate();
 
   if (shell.state === "missing-env") {
@@ -23,8 +23,8 @@ export default async function ControlRoomPage() {
   }
 
   return (
-    <Suspense fallback={<AdminOverviewPageSkeleton />}>
-      <ControlRoomOverviewContent />
+    <Suspense fallback={<AdminSubscribersPageSkeleton />}>
+      <ControlRoomSubscribersContent />
     </Suspense>
   );
 }

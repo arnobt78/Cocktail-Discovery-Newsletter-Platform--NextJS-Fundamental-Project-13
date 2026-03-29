@@ -3,8 +3,7 @@ import { DM_Sans, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { AppShell } from "@/components/layout/app-shell";
 import { NewsletterProvider } from "@/context/newsletter-context";
 
 const dmSans = DM_Sans({
@@ -41,11 +40,7 @@ export default function RootLayout({
         <QueryProvider>
           <NewsletterProvider>
             <div className="app-shell">
-              <div className="relative z-10 flex min-h-screen flex-col">
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
+              <AppShell>{children}</AppShell>
             </div>
             <Toaster
               position="bottom-right"

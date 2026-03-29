@@ -37,11 +37,11 @@ export function RippleButton({
         onClick?.(event);
       }}
       className={cn(
-        "relative isolate overflow-hidden transition duration-200 disabled:cursor-not-allowed disabled:opacity-70",
+        "relative isolate inline-flex min-h-0 items-center justify-center overflow-hidden transition duration-200 disabled:cursor-not-allowed disabled:opacity-70",
         className,
       )}
     >
-      <span className="relative z-10 inline-flex items-center justify-center gap-2">
+      <span className="relative z-10 flex min-h-0 items-center justify-center gap-2 [&_svg]:shrink-0">
         {children}
       </span>
       {ripples.map((ripple) => (

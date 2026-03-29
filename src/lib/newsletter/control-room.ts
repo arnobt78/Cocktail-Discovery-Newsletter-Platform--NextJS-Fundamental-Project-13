@@ -21,8 +21,8 @@ export interface ControlRoomSummary {
   unsubscribedCount: number;
   confirmedCount: number;
   reasonBreakdown: Array<{ reason: UnsubscribeReason | "unknown"; count: number }>;
-  recentConfirmed: NewsletterSubscriber[];
-  recentPending: NewsletterSubscriber[];
+  allConfirmedSubscribers: NewsletterSubscriber[];
+  allPendingSubscribers: NewsletterSubscriber[];
   setupChecklist: Array<{ label: string; ready: boolean }>;
   allDrafts: BroadcastDraft[];
   allHistory: BroadcastHistoryItem[];
@@ -77,8 +77,12 @@ export async function getControlRoomSummary(): Promise<ControlRoomSummary> {
     unsubscribedCount: unsubscribed.length,
     confirmedCount: confirmed.length,
     reasonBreakdown,
-    recentConfirmed: confirmed.slice(0, 8),
-    recentPending: pendingSubscribers.slice(0, 8),
+    allConfirmedSubscribers: confirmed.sort((a, b) =>
+      (b.confirmedAt ?? b.createdAt).localeCompare(a.confirmedAt ?? a.createdAt),
+    ),
+    allPendingSubscribers: pendingSubscribers.sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    ),
     setupChecklist,
     allDrafts,
     allHistory,

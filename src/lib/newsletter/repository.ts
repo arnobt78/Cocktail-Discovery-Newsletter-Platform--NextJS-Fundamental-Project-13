@@ -354,3 +354,56 @@ export async function clearBroadcastQueue(): Promise<void> {
   const redis = getRedisClient();
   await redis.del(BROADCAST_QUEUE_KEY);
 }
+
+export async function adminDeleteSubscriberRecord(email: string): Promise<void> {
+  const redis = getRedisClient();
+  const normalized = email.toLowerCase();
+  await redis.hdel(SUBSCRIBER_HASH_KEY, normalized);
+  await redis.srem(EMAIL_SET_KEY, normalized);
+}
+
+export async function adminUpdateSubscriberNames(
+  email: string,
+  firstName: string,
+  lastName: string,
+): Promise<NewsletterSubscriber | null> {
+  const existing = await getSubscriberByEmail(email);
+  if (!existing) {
+    return null;
+  }
+  const fn = firstName.trim();
+  const ln = lastName.trim();
+  const next: NewsletterSubscriber = {
+    ...existing,
+    firstName: fn,
+    lastName: ln,
+    fullName: [fn, ln].filter(Boolean).join(" ") || existing.email,
+  };
+  await saveSubscriber(next, false);
+  return next;
+}
+
+export async function adminUpdatePendingSubscriberNames(
+  email: string,
+  firstName: string,
+  lastName: string,
+): Promise<NewsletterSubscriber | null> {
+  const redis = getRedisClient();
+  const normalized = email.toLowerCase();
+  const existing = await getPendingSubscriberByEmail(normalized);
+  if (!existing) {
+    return null;
+  }
+  const fn = firstName.trim();
+  const ln = lastName.trim();
+  const next: NewsletterSubscriber = {
+    ...existing,
+    firstName: fn,
+    lastName: ln,
+    fullName: [fn, ln].filter(Boolean).join(" ") || existing.email,
+  };
+  await redis.hset(PENDING_HASH_KEY, {
+    [normalized]: JSON.stringify(next),
+  });
+  return next;
+}
