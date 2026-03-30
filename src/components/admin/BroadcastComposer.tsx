@@ -51,6 +51,7 @@ import type {
   BroadcastHistoryItem,
   BroadcastQueueItem,
 } from "@/types/newsletter";
+import type { ControlRoomSummary } from "@/lib/newsletter/control-room";
 import { formatAdminDateTime } from "@/lib/admin-datetime";
 
 function isoToDatetimeLocal(iso: string): string {
@@ -276,6 +277,33 @@ export function BroadcastComposer({
     });
   }
 
+  /** Re-sync drafts / history / queue from Redis and refresh the admin summary query (overview + composer props). */
+  async function syncComposerFromServer() {
+    try {
+      const res = await fetch("/api/admin/control-room/summary", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        return;
+      }
+      const summary = (await res.json()) as ControlRoomSummary;
+      if (
+        Array.isArray(summary.allDrafts) &&
+        Array.isArray(summary.allHistory) &&
+        Array.isArray(summary.allQueue)
+      ) {
+        setDrafts(summary.allDrafts);
+        setHistory(summary.allHistory);
+        setQueue(summary.allQueue);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      onSummaryInvalidate?.();
+    }
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSending(true);
@@ -390,9 +418,7 @@ export function BroadcastComposer({
           audience: "all",
         });
         setScheduledFor("");
-        if (payload.scheduledFor && data.queueItem) {
-          setQueue((prev) => [data.queueItem!, ...prev]);
-        }
+        await syncComposerFromServer();
       }
     } finally {
       setIsSending(false);
@@ -482,23 +508,7 @@ export function BroadcastComposer({
     const data = (await response.json()) as { ok: boolean; message: string };
     showToast(data.ok, data.message, "Resend campaign");
     if (response.ok && data.ok) {
-      const sourceItem =
-        sourceType === "draft"
-          ? drafts.find((item) => item.id === sourceId)
-          : history.find((item) => item.id === sourceId);
-      if (!sourceItem) {
-        return;
-      }
-      setHistory((prev) => [
-        {
-          ...sourceItem,
-          id: `local-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          sentAt: new Date().toISOString(),
-          sentCount: 0,
-        },
-        ...prev,
-      ]);
+      await syncComposerFromServer();
     }
   }
 
@@ -519,14 +529,7 @@ export function BroadcastComposer({
       "Queue processing",
     );
     if (response.ok && data.ok) {
-      const listRes = await fetch("/api/admin/control-room/queue");
-      const listData = (await listRes.json()) as {
-        ok: boolean;
-        items?: BroadcastQueueItem[];
-      };
-      if (listData.ok && listData.items) {
-        setQueue(listData.items);
-      }
+      await syncComposerFromServer();
     }
   }
 
