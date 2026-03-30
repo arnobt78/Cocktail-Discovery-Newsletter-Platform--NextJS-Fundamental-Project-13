@@ -45,7 +45,10 @@ type DiagnosticsPayload = {
   }>;
 };
 
-const INTEGRATION_LABELS: Record<keyof DiagnosticsPayload["runtime"]["integrations"], string> = {
+const INTEGRATION_LABELS: Record<
+  keyof DiagnosticsPayload["runtime"]["integrations"],
+  string
+> = {
   redis: "Upstash Redis",
   resend: "Resend",
   adminKey: "Admin dashboard key",
@@ -68,7 +71,9 @@ function statusBadgeClass(httpStatus: number, error?: boolean) {
 }
 
 export function AdminApiStatusPage() {
-  const [diagnostics, setDiagnostics] = useState<DiagnosticsPayload | null>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsPayload | null>(
+    null,
+  );
   const [diagError, setDiagError] = useState<string | null>(null);
   const [rows, setRows] = useState<ProbeRow[]>([]);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
@@ -154,10 +159,10 @@ export function AdminApiStatusPage() {
           <h1 className="text-2xl font-bold text-white font-heading sm:text-3xl">
             API status
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-400 sm:text-base">
-            Live checks: browser probes (with your session), server-side probes from the app
-            origin (no session), TheCocktailDB latency, and configured integrations. Refreshes
-            every 30 seconds.
+          <p className="mt-1 text-sm text-slate-400 sm:text-base">
+            Live checks: browser probes (with your session), server-side probes
+            from the app origin (no session), TheCocktailDB latency, and
+            configured integrations. Refreshes every 30 seconds.
           </p>
         </div>
         <button
@@ -193,7 +198,8 @@ export function AdminApiStatusPage() {
                 {diagnostics.cocktailDb.ok ? "Reachable" : "Issue"}
               </Badge>
               <span className="text-sm tabular-nums text-slate-300">
-                {diagnostics.cocktailDb.ms} ms · HTTP {diagnostics.cocktailDb.status || "—"}
+                {diagnostics.cocktailDb.ms} ms · HTTP{" "}
+                {diagnostics.cocktailDb.status || "—"}
               </span>
             </div>
           ) : (
@@ -217,8 +223,8 @@ export function AdminApiStatusPage() {
               : "Running first check…"}
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            401 / 405 often mean the handler is reachable (auth or method mismatch). 0 = network
-            error or timeout.
+            401 / 405 often mean the handler is reachable (auth or method
+            mismatch). 0 = network error or timeout.
           </p>
         </Card>
       </div>
@@ -262,9 +268,12 @@ export function AdminApiStatusPage() {
 
       <Card className="mt-4 glass-panel border-white/10 bg-white/[0.03] p-0 overflow-hidden sm:mt-5">
         <div className="border-b border-white/10 px-4 py-3 sm:px-5">
-          <h2 className="text-lg font-semibold text-white">Server-side routes</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Server-side routes
+          </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Fetched from this deployment using the diagnostics handler (no browser cookies).
+            Fetched from this deployment using the diagnostics handler (no
+            browser cookies).
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -280,7 +289,10 @@ export function AdminApiStatusPage() {
             <tbody>
               {!diagnostics?.serverProbes?.length ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500 sm:px-5">
+                  <td
+                    colSpan={4}
+                    className="px-4 py-8 text-center text-slate-500 sm:px-5"
+                  >
                     {running ? "Refreshing…" : "No server probe data yet."}
                   </td>
                 </tr>
@@ -291,7 +303,9 @@ export function AdminApiStatusPage() {
                     className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]"
                   >
                     <td className="px-4 py-3 sm:px-5">
-                      <div className="font-medium text-slate-200">{row.label}</div>
+                      <div className="font-medium text-slate-200">
+                        {row.label}
+                      </div>
                       <code className="mt-0.5 block break-all text-xs text-cyan-200/80">
                         {row.path}
                       </code>
@@ -319,7 +333,8 @@ export function AdminApiStatusPage() {
         <div className="border-b border-white/10 px-4 py-3 sm:px-5">
           <h2 className="text-lg font-semibold text-white">Browser probes</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Same-origin requests from your browser with credentials (admin session on API routes).
+            Same-origin requests from your browser with credentials (admin
+            session on API routes).
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -335,7 +350,10 @@ export function AdminApiStatusPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500 sm:px-5">
+                  <td
+                    colSpan={4}
+                    className="px-4 py-8 text-center text-slate-500 sm:px-5"
+                  >
                     {running ? "Refreshing…" : "No results yet."}
                   </td>
                 </tr>
@@ -346,12 +364,16 @@ export function AdminApiStatusPage() {
                     className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]"
                   >
                     <td className="px-4 py-3 sm:px-5">
-                      <div className="font-medium text-slate-200">{row.label}</div>
+                      <div className="font-medium text-slate-200">
+                        {row.label}
+                      </div>
                       <code className="mt-0.5 block break-all text-xs text-cyan-200/80">
                         {row.path}
                       </code>
                       {row.error ? (
-                        <span className="mt-1 block text-xs text-rose-300">{row.error}</span>
+                        <span className="mt-1 block text-xs text-rose-300">
+                          {row.error}
+                        </span>
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap px-2 py-3 text-slate-400 sm:px-3">
