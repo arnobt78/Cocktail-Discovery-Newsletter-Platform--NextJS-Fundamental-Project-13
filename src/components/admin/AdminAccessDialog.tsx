@@ -12,7 +12,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Lock, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { RippleButton } from "@/components/ui/ripple-button";
@@ -62,7 +62,10 @@ export function AdminAccessDialog() {
     updateDigit(index, event.target.value);
   }
 
-  function onDigitKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
+  function onDigitKeyDown(
+    index: number,
+    event: KeyboardEvent<HTMLInputElement>,
+  ) {
     if (event.key === "Backspace" && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -82,7 +85,10 @@ export function AdminAccessDialog() {
       return;
     }
     event.preventDefault();
-    const next = Array.from({ length: PASSKEY_LENGTH }, (_, idx) => pasted[idx] ?? "");
+    const next = Array.from(
+      { length: PASSKEY_LENGTH },
+      (_, idx) => pasted[idx] ?? "",
+    );
     setDigits(next);
     const nextFocus = Math.min(pasted.length, PASSKEY_LENGTH - 1);
     inputRefs.current[nextFocus]?.focus();
@@ -161,78 +167,75 @@ export function AdminAccessDialog() {
         <AlertDialogOverlay />
         <AlertDialogContent className="glass-panel mt-0">
           <motion.div
-            animate={
-              shakeCount > 0
-                ? { x: [0, -6, 6, -4, 4, 0] }
-                : { x: 0 }
-            }
+            animate={shakeCount > 0 ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
             transition={{ duration: 0.28 }}
           >
-          <AlertDialogHeader>
-            <div>
-              <AlertDialogTitle>Admin Access Verification</AlertDialogTitle>
-              <AlertDialogDescription>
-                To access the admin page, please enter the passkey{" "}
-                <span className="font-semibold text-amber-300">112233</span>.
-                <button
-                  type="button"
-                  onClick={onCopyPasskey}
-                  className="ml-2 inline-flex items-center gap-1 rounded-md border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/20"
-                  aria-label="Copy admin passkey"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-3.5 w-3.5" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </AlertDialogDescription>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md p-1 text-slate-300 transition hover:bg-white/10 hover:text-white"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </AlertDialogHeader>
+            <AlertDialogHeader>
+              <div>
+                <AlertDialogTitle>Admin Access Verification</AlertDialogTitle>
+                <AlertDialogDescription>
+                  To access the admin page, please enter the passkey{" "}
+                  <span className="font-semibold text-emerald-300">112233</span>
+                  <button
+                    type="button"
+                    onClick={onCopyPasskey}
+                    className="ml-1 inline-flex items-center gap-1 rounded-md border border-emerald-300/35 bg-emerald-500/10 px-1.5 py-1 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/20"
+                    aria-label="Copy admin passkey"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3 w-3" />
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                      </>
+                    )}
+                  </button>
+                </AlertDialogDescription>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md p-1 text-slate-300 transition hover:bg-white/10 hover:text-white"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </AlertDialogHeader>
 
-          <form onSubmit={onSubmit}>
-            <div className="mb-4 grid grid-cols-6 gap-3" onPaste={onPaste}>
-              {digits.map((digit, index) => (
-                <input
-                  key={`digit-${index + 1}`}
-                  ref={(element) => {
-                    inputRefs.current[index] = element;
-                  }}
-                  value={digit}
-                  onChange={(event) => onDigitChange(index, event)}
-                  onKeyDown={(event) => onDigitKeyDown(index, event)}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={1}
-                  type="password"
-                  className="h-14 w-full rounded-xl border border-white/15 bg-slate-900/50 text-center text-xl font-semibold tracking-[0.2em] text-slate-100 outline-none transition focus:border-emerald-300/50 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-0"
-                  aria-label={`Passkey digit ${index + 1}`}
-                />
-              ))}
-            </div>
-            {error ? <p className="mb-3 text-sm text-rose-300">{error}</p> : null}
-            <RippleButton
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/85 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
-            >
-              {isLoading ? "Checking..." : "Enter Admin Passkey"}
-            </RippleButton>
-          </form>
+            <form onSubmit={onSubmit}>
+              <div className="mb-4 grid grid-cols-6 gap-3" onPaste={onPaste}>
+                {digits.map((digit, index) => (
+                  <input
+                    key={`digit-${index + 1}`}
+                    ref={(element) => {
+                      inputRefs.current[index] = element;
+                    }}
+                    value={digit}
+                    onChange={(event) => onDigitChange(index, event)}
+                    onKeyDown={(event) => onDigitKeyDown(index, event)}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    type="password"
+                    className="h-14 w-full rounded-xl border border-white/15 bg-slate-900/50 text-center text-xl font-semibold tracking-[0.2em] text-slate-100 outline-none transition focus:border-emerald-300/50 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-0"
+                    aria-label={`Passkey digit ${index + 1}`}
+                  />
+                ))}
+              </div>
+              {error ? (
+                <p className="mb-3 text-sm text-rose-300">{error}</p>
+              ) : null}
+              <RippleButton
+                type="submit"
+                disabled={isLoading}
+                className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/85 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                <Lock className="h-4 w-4" />
+                {isLoading ? "Checking..." : "Enter Admin Passkey"}
+              </RippleButton>
+            </form>
           </motion.div>
         </AlertDialogContent>
       </AlertDialog>

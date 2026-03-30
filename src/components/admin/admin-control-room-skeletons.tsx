@@ -123,9 +123,16 @@ export function AdminOverviewPageSkeleton() {
           <ScrollPanel className="min-h-[12rem] max-h-[min(24rem,45vh)]">
             <ul className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <li key={i} className="flex w-full items-center justify-between gap-2">
-                  <Pulse className="h-4 flex-1 max-w-[12rem]" />
-                  <Pulse className="h-6 w-10 shrink-0 rounded-full" />
+                <li
+                  key={i}
+                  className="flex w-full items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <Pulse className="mb-2 h-4 w-40" />
+                    <Pulse className="mb-2 h-3 w-56 max-w-full" />
+                    <Pulse className="h-3 w-44 max-w-full" />
+                  </div>
+                  <Pulse className="mt-0.5 h-3 w-28 shrink-0" />
                 </li>
               ))}
             </ul>
@@ -146,10 +153,13 @@ export function AdminOverviewPageSkeleton() {
               {Array.from({ length: 3 }).map((_, i) => (
                 <li
                   key={i}
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
+                  className="flex w-full items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
                 >
-                  <Pulse className="mb-2 h-4 w-40" />
-                  <Pulse className="h-3 w-56" />
+                  <div className="min-w-0 flex-1">
+                    <Pulse className="mb-2 h-4 w-40" />
+                    <Pulse className="h-3 w-56 max-w-full" />
+                  </div>
+                  <Pulse className="h-3 w-32 shrink-0" />
                 </li>
               ))}
             </ul>
@@ -168,10 +178,13 @@ export function AdminOverviewPageSkeleton() {
               {Array.from({ length: 2 }).map((_, i) => (
                 <li
                   key={i}
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
+                  className="flex w-full items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
                 >
-                  <Pulse className="mb-2 h-4 w-36" />
-                  <Pulse className="h-3 w-52" />
+                  <div className="min-w-0 flex-1">
+                    <Pulse className="mb-2 h-4 w-36" />
+                    <Pulse className="h-3 w-52 max-w-full" />
+                  </div>
+                  <Pulse className="h-3 w-32 shrink-0" />
                 </li>
               ))}
             </ul>

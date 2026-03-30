@@ -24,6 +24,8 @@ export interface ControlRoomSummary {
   unsubscribedCount: number;
   confirmedCount: number;
   reasonBreakdown: Array<{ reason: UnsubscribeReason | "unknown"; count: number }>;
+  /** Unsubscribed rows (newest first), for overview detail list. */
+  unsubscribedSubscribers: NewsletterSubscriber[];
   allConfirmedSubscribers: NewsletterSubscriber[];
   allPendingSubscribers: NewsletterSubscriber[];
   setupChecklist: Array<{ label: string; ready: boolean }>;
@@ -65,6 +67,10 @@ export async function getControlRoomSummary(): Promise<ControlRoomSummary> {
     .map(([reason, count]) => ({ reason, count }))
     .sort((a, b) => b.count - a.count);
 
+  const unsubscribedSubscribers = [...unsubscribed].sort((a, b) =>
+    (b.unsubscribedAt ?? "").localeCompare(a.unsubscribedAt ?? ""),
+  );
+
   const setupChecklist = [
     { label: "Resend configured", ready: Boolean(process.env.RESEND_API_KEY) },
     { label: "Sender email configured", ready: Boolean(process.env.RESEND_FROM_EMAIL) },
@@ -80,6 +86,7 @@ export async function getControlRoomSummary(): Promise<ControlRoomSummary> {
     unsubscribedCount: unsubscribed.length,
     confirmedCount: confirmed.length,
     reasonBreakdown,
+    unsubscribedSubscribers,
     allConfirmedSubscribers: confirmed.sort((a, b) =>
       (b.confirmedAt ?? b.createdAt).localeCompare(a.confirmedAt ?? a.createdAt),
     ),

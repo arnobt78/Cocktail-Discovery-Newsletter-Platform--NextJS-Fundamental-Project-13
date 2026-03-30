@@ -17,6 +17,25 @@ import { Card } from "@/components/ui/card";
 import { ScrollPanel } from "@/components/ui/scroll-panel";
 import type { ControlRoomSummary } from "@/lib/newsletter/control-room";
 import { useAdminSummaryQuery } from "@/hooks/use-admin-summary-query";
+import { formatAdminDateTime } from "@/lib/admin-datetime";
+import type { UnsubscribeReason } from "@/types/newsletter";
+
+const UNSUBSCRIBE_REASON_LABELS: Record<UnsubscribeReason, string> = {
+  too_many_emails: "Too many emails",
+  not_relevant: "Not relevant to me",
+  signed_up_by_mistake: "Signed up by mistake",
+  prefer_another_channel: "Prefer another channel",
+  other: "Other",
+};
+
+function formatUnsubscribeReasonLabel(
+  reason: UnsubscribeReason | "unknown" | undefined,
+): string {
+  if (!reason || reason === "unknown") {
+    return "No reason given";
+  }
+  return UNSUBSCRIBE_REASON_LABELS[reason] ?? reason;
+}
 
 interface AdminOverviewDashboardProps {
   initialSummary: ControlRoomSummary;
@@ -92,11 +111,6 @@ export function AdminOverviewDashboard({
       guide: "Scheduled posts waiting for process queue run.",
     },
   ];
-
-  const reasonEntriesTotal = summary.reasonBreakdown.reduce(
-    (s, r) => s + r.count,
-    0,
-  );
 
   return (
     <section className="mx-auto w-full max-w-9xl px-4 py-6 sm:px-8">
@@ -191,27 +205,38 @@ export function AdminOverviewDashboard({
               Unsubscribe Reasons
             </h2>
             <Badge className="border border-cyan-300/40 bg-cyan-500/15 text-cyan-100">
-              {reasonEntriesTotal}
+              {summary.unsubscribedSubscribers.length}
             </Badge>
           </div>
-          {summary.reasonBreakdown.length === 0 ? (
+          {summary.unsubscribedSubscribers.length === 0 ? (
             <p className="text-sm text-slate-300">
-              No unsubscribe feedback yet.
+              No unsubscribes recorded yet.
             </p>
           ) : (
             <ScrollPanel>
               <ul className="space-y-2">
-                {summary.reasonBreakdown.map((item) => (
+                {summary.unsubscribedSubscribers.map((item) => (
                   <li
-                    key={item.reason}
-                    className="flex w-full items-center justify-between gap-2 text-sm text-slate-200"
+                    key={`${item.email}-${item.unsubscribedAt ?? ""}`}
+                    className="flex w-full items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm text-slate-200"
                   >
-                    <span className="capitalize">
-                      {item.reason.replaceAll("_", " ")}
-                    </span>
-                    <Badge className="shrink-0 bg-cyan-400/20 text-cyan-100 border border-cyan-300/30">
-                      {item.count}
-                    </Badge>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-100">
+                        {item.fullName}
+                      </p>
+                      <p className="text-slate-300">{item.email}</p>
+                      <p className="mt-1 text-slate-400">
+                        {formatUnsubscribeReasonLabel(item.unsubscribeReason)}
+                      </p>
+                      {item.unsubscribeFeedback?.trim() ? (
+                        <p className="mt-1 text-xs italic text-slate-500">
+                          &ldquo;{item.unsubscribeFeedback.trim()}&rdquo;
+                        </p>
+                      ) : null}
+                    </div>
+                    <p className="shrink-0 text-right text-xs text-slate-400 sm:text-sm">
+                      Left {formatAdminDateTime(item.unsubscribedAt)}
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -240,12 +265,20 @@ export function AdminOverviewDashboard({
                 {summary.allConfirmedSubscribers.map((item) => (
                   <li
                     key={`${item.email}-${item.confirmedAt ?? item.createdAt}`}
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
+                    className="flex w-full items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
                   >
-                    <p className="font-medium text-slate-100">
-                      {item.fullName}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-100">
+                        {item.fullName}
+                      </p>
+                      <p className="text-slate-300">{item.email}</p>
+                    </div>
+                    <p className="shrink-0 text-right text-xs text-slate-400 sm:text-sm">
+                      Confirmed{" "}
+                      {formatAdminDateTime(
+                        item.confirmedAt ?? item.createdAt,
+                      )}
                     </p>
-                    <p className="text-slate-300">{item.email}</p>
                   </li>
                 ))}
               </ul>
@@ -270,12 +303,17 @@ export function AdminOverviewDashboard({
                 {summary.allPendingSubscribers.map((item) => (
                   <li
                     key={`${item.email}-${item.createdAt}`}
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
+                    className="flex w-full items-start justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
                   >
-                    <p className="font-medium text-slate-100">
-                      {item.fullName}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-100">
+                        {item.fullName}
+                      </p>
+                      <p className="text-slate-300">{item.email}</p>
+                    </div>
+                    <p className="shrink-0 text-right text-xs text-slate-400 sm:text-sm">
+                      Submitted {formatAdminDateTime(item.createdAt)}
                     </p>
-                    <p className="text-slate-300">{item.email}</p>
                   </li>
                 ))}
               </ul>
