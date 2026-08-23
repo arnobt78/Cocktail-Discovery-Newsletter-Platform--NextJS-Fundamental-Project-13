@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Lists favorited drink IDs from localStorage, then fetches each drink from TheCocktailDB for cards (client-only data).
+ * Favorites list body — header shell is server-rendered in app/favorites/page.tsx.
+ * Lists favorited drink IDs from localStorage, then fetches each drink from TheCocktailDB.
  */
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -32,7 +33,7 @@ const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "https://www.thecocktaildb.com/api/json/v1/1";
 
-export function FavoritesPage() {
+export function FavoritesPageContent() {
   /** Start empty so SSR + first client paint match; sync from localStorage after mount. */
   const [favoriteIds, setFavoriteIdsState] = useState<string[]>([]);
   /** False until the first client read of localStorage — avoids treating initial [] as "no favorites". */
@@ -41,8 +42,6 @@ export function FavoritesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    /* Sync from localStorage after mount; not useSyncExternalStore(getFavoriteIds) because
-       JSON snapshots still hydrate as [] before the first paint, which races the fetch effect. */
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-only storage read
     setFavoriteIdsState(getFavoriteIds());
     setStorageReady(true);
@@ -122,35 +121,20 @@ export function FavoritesPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-9xl px-4 py-8 sm:px-8">
-      <motion.div
-        {...panelLiftMotion}
-        className="glass-panel mb-8 rounded-[26px] border-rose-300/20 p-6 shadow-[0_25px_80px_rgba(244,63,94,0.2)]"
-      >
-        <div className="inline-flex items-center gap-2 rounded-full border border-rose-300/30 bg-rose-400/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-rose-200">
-          <Heart className="h-3.5 w-3.5" />
-          Favorites
-        </div>
-        <h1 className="mt-3 text-2xl sm:text-3xl font-bold text-white font-heading">
-          Your Favorite Cocktails
-        </h1>
-        <p className="mt-2 text-slate-300">
-          Saved drinks appear here for faster access and comparison.
-        </p>
-        <div className="mt-4 inline-flex min-w-[10rem] rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1.5 text-sm font-semibold text-rose-100">
-          Total favorites:{" "}
-          {storageReady ? (
-            favoriteIds.length
-          ) : (
-            <span className="inline-block w-4 animate-pulse rounded bg-rose-300/25 align-middle">
-              &nbsp;
-            </span>
-          )}
-        </div>
-      </motion.div>
+    <>
+      <div className="mt-4 inline-flex min-w-[10rem] rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1.5 text-sm font-semibold text-rose-100">
+        Total favorites:{" "}
+        {storageReady ? (
+          favoriteIds.length
+        ) : (
+          <span className="inline-block w-4 animate-pulse rounded bg-rose-300/25 align-middle">
+            &nbsp;
+          </span>
+        )}
+      </div>
 
       {!storageReady || isLoading ? (
-        <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-8 grid w-full grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <motion.div
               key={`favorite-skeleton-${index}`}
@@ -167,7 +151,7 @@ export function FavoritesPage() {
         <motion.div
           {...panelLiftMotion}
           transition={{ ...panelLiftMotion.transition, delay: 0.08 }}
-          className="glass-panel rounded-2xl border-white/15 p-8 text-center"
+          className="glass-panel mt-8 rounded-2xl border-white/15 p-8 text-center"
         >
           <p className="mb-4 text-lg font-semibold text-slate-100">
             No favorites yet.
@@ -187,7 +171,7 @@ export function FavoritesPage() {
           variants={containerMotion}
           initial="hidden"
           animate="visible"
-          className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+          className="mt-8 grid w-full grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
         >
           {orderedDrinks.map((drink, index) => (
             <motion.article
@@ -241,6 +225,6 @@ export function FavoritesPage() {
           ))}
         </motion.div>
       ) : null}
-    </section>
+    </>
   );
 }

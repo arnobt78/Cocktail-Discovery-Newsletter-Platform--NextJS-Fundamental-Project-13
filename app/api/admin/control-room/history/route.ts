@@ -1,23 +1,13 @@
 /** Resend history rows: DELETE by id or clear all. */
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  getAdminSessionCookieName,
-  verifyAdminSessionValue,
-} from "@/lib/admin-session";
+import { assertAdminSession } from "@/lib/admin-api-auth";
 import {
   clearBroadcastHistory,
   deleteBroadcastHistoryItem,
 } from "@/lib/newsletter/repository";
 
-async function ensureAuth(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(getAdminSessionCookieName())?.value;
-  return verifyAdminSessionValue(sessionValue);
-}
-
 export async function DELETE(request: Request): Promise<NextResponse<{ ok: boolean; message: string }>> {
-  if (!(await ensureAuth())) {
+  if (!(await assertAdminSession())) {
     return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
   }
 

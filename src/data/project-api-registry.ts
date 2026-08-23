@@ -29,7 +29,7 @@ export const PROJECT_API_DOC_GROUPS: readonly ApiDocGroup[] = [
         summary: "Subscribe: validates payload, rate-limits, queues confirmation email.",
         auth: "public",
         request:
-          "JSON `{ email, fullName }` — email required; name optional for personalization.",
+          "JSON `{ firstName, lastName, email }` — all three fields required.",
         response: "JSON `{ ok, message }` — 200 success, 400 validation, 429 rate limit.",
       },
       {
@@ -68,7 +68,7 @@ export const PROJECT_API_DOC_GROUPS: readonly ApiDocGroup[] = [
         methods: ["POST"],
         summary: "Validates `ADMIN_DASHBOARD_KEY`, sets httpOnly session cookie.",
         auth: "public",
-        request: "JSON `{ password }` matching env secret.",
+        request: "JSON `{ passkey }` — 6-digit value matching `ADMIN_DASHBOARD_KEY`.",
         response: "JSON `{ ok, message }` — Set-Cookie on success.",
       },
       {

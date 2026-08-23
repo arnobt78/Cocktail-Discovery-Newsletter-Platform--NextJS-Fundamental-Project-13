@@ -1,7 +1,7 @@
 import type { BroadcastAudience } from "@/types/newsletter";
 
 /** Types for AI composer-assist API responses. */
-export type AiComposerProviderId = "groq" | "gemini" | "openrouter";
+export type AiComposerProviderId = "groq" | "gemini" | "openrouter" | "huggingface";
 
 export interface AiComposerFillPayload {
   subject: string;
@@ -14,4 +14,5 @@ export interface AiComposerFillPayload {
 
 export interface AiComposerFillResponse extends AiComposerFillPayload {
   providerUsed: AiComposerProviderId;
+  modelUsed: string;
 }

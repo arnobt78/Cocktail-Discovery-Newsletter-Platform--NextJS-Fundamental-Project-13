@@ -1,10 +1,6 @@
 /** Resend content from an existing draft or history entry. */
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  getAdminSessionCookieName,
-  verifyAdminSessionValue,
-} from "@/lib/admin-session";
+import { assertAdminSession } from "@/lib/admin-api-auth";
 import {
   getBroadcastDraftById,
   getBroadcastHistoryById,
@@ -12,9 +8,7 @@ import {
 import { dispatchBroadcast } from "@/lib/newsletter/broadcast-dispatch";
 
 export async function POST(request: Request): Promise<NextResponse<{ ok: boolean; message: string; sent?: number }>> {
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(getAdminSessionCookieName())?.value;
-  if (!verifyAdminSessionValue(sessionValue)) {
+  if (!(await assertAdminSession())) {
     return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
   }
 

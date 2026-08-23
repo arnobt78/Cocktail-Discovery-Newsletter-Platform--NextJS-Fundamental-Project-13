@@ -1,0 +1,21 @@
+# Secrets — never index for AI or commit
+!.env
+!.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Test artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Logs and local misc
+*.log
+.DS_Store

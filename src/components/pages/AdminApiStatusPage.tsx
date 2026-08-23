@@ -35,6 +35,7 @@ type DiagnosticsPayload = {
       groq: boolean;
       gemini: boolean;
       openrouter: boolean;
+      huggingface: boolean;
     };
   };
   serverProbes: Array<{
@@ -56,6 +57,7 @@ const INTEGRATION_LABELS: Record<
   groq: "Groq",
   gemini: "Gemini",
   openrouter: "OpenRouter",
+  huggingface: "Hugging Face",
 };
 
 function statusBadgeClass(httpStatus: number, error?: boolean) {
@@ -148,9 +150,12 @@ export function AdminApiStatusPage() {
   }, []);
 
   useEffect(() => {
-    void runProbes();
+    const initialTimer = window.setTimeout(() => void runProbes(), 0);
     const id = window.setInterval(() => void runProbes(), 30_000);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(id);
+    };
   }, [runProbes]);
 
   return (

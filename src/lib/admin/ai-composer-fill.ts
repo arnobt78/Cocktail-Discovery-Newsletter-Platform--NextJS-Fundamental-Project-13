@@ -1,5 +1,13 @@
 import type { AiComposerFillPayload, AiComposerFillResponse, AiComposerProviderId } from "@/types/admin";
 import type { BroadcastAudience } from "@/types/newsletter";
+import {
+  AI_PROVIDER_ORDER,
+  getModelsForProvider,
+  getProviderApiKey,
+  isProviderConfigured,
+  isRetriableAiError,
+  shouldSkipProviderOnError,
+} from "@/lib/admin/ai-provider-models";
 
 /** Server-only LLM calls with ordered fallback; parses JSON-shaped reply into broadcast fields. */
 const SYSTEM = `You help admins draft MixMaster newsletter posts about cocktails, recipes, and bar culture.
@@ -8,6 +16,16 @@ subject (string), preheader (string), body (string, use \\n for line breaks),
 ctaLabel (string, optional), ctaUrl (string, optional, must be https if present),
 audience (string: one of "all", "recent", "engaged").
 Keep subject under 90 chars, preheader under 120 chars, body concise but useful.`;
+
+class AiProviderError extends Error {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "AiProviderError";
+    this.status = status;
+  }
+}
 
 function extractJsonObject(raw: string): Record<string, unknown> {
   const trimmed = raw.trim();
@@ -48,17 +66,19 @@ function toPayload(data: Record<string, unknown>): AiComposerFillPayload {
   };
 }
 
-async function callGroq(userPrompt: string): Promise<string> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) {
-    throw new Error("GROQ_API_KEY not set");
-  }
-  const model = process.env.GROQ_MODEL ?? "llama-3.1-8b-instant";
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+async function callOpenAiCompatible(
+  url: string,
+  apiKey: string,
+  model: string,
+  userPrompt: string,
+  extraHeaders?: Record<string, string>,
+): Promise<string> {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
+      Authorization: `Bearer ${apiKey}`,
+      ...extraHeaders,
     },
     body: JSON.stringify({
       model,
@@ -71,26 +91,36 @@ async function callGroq(userPrompt: string): Promise<string> {
     }),
   });
   if (!res.ok) {
-    const err = new Error(`Groq HTTP ${res.status}`) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
+    throw new AiProviderError(`HTTP ${res.status}`, res.status);
   }
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
   const text = json.choices?.[0]?.message?.content;
   if (!text) {
-    throw new Error("Groq returned empty content");
+    throw new Error("Empty content");
   }
   return text;
 }
 
-async function callGemini(userPrompt: string): Promise<string> {
-  const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY;
+async function callGroqModel(model: string, userPrompt: string): Promise<string> {
+  const key = getProviderApiKey("groq");
+  if (!key) {
+    throw new Error("GROQ_API_KEY not set");
+  }
+  return callOpenAiCompatible(
+    "https://api.groq.com/openai/v1/chat/completions",
+    key,
+    model,
+    userPrompt,
+  );
+}
+
+async function callGeminiModel(model: string, userPrompt: string): Promise<string> {
+  const key = getProviderApiKey("gemini");
   if (!key) {
     throw new Error("GEMINI_API_KEY not set");
   }
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const res = await fetch(url, {
     method: "POST",
@@ -101,61 +131,65 @@ async function callGemini(userPrompt: string): Promise<string> {
     }),
   });
   if (!res.ok) {
-    const err = new Error(`Gemini HTTP ${res.status}`) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
+    throw new AiProviderError(`HTTP ${res.status}`, res.status);
   }
   const json = (await res.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
   const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("");
   if (!text) {
-    throw new Error("Gemini returned empty content");
+    throw new Error("Empty content");
   }
   return text;
 }
 
-async function callOpenRouter(userPrompt: string): Promise<string> {
-  const key = process.env.OPENROUTER_API_KEY;
+async function callOpenRouterModel(model: string, userPrompt: string): Promise<string> {
+  const key = getProviderApiKey("openrouter");
   if (!key) {
     throw new Error("OPENROUTER_API_KEY not set");
   }
-  const model = process.env.OPENROUTER_MODEL ?? "meta-llama/llama-3.1-8b-instruct:free";
   const site = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
+  return callOpenAiCompatible(
+    "https://openrouter.ai/api/v1/chat/completions",
+    key,
+    model,
+    userPrompt,
+    {
       "HTTP-Referer": site,
       "X-Title": "MixMaster Admin",
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.35,
-      max_tokens: 2048,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const err = new Error(`OpenRouter HTTP ${res.status}`) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
-  }
-  const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const text = json.choices?.[0]?.message?.content;
-  if (!text) {
-    throw new Error("OpenRouter returned empty content");
-  }
-  return text;
+  );
 }
 
-const ORDER: AiComposerProviderId[] = ["groq", "gemini", "openrouter"];
+async function callHuggingFaceModel(model: string, userPrompt: string): Promise<string> {
+  const key = getProviderApiKey("huggingface");
+  if (!key) {
+    throw new Error("HUGGINGFACE_API_KEY not set");
+  }
+  return callOpenAiCompatible(
+    "https://router.huggingface.co/v1/chat/completions",
+    key,
+    model,
+    userPrompt,
+  );
+}
+
+async function callProviderModel(
+  provider: AiComposerProviderId,
+  model: string,
+  userPrompt: string,
+): Promise<string> {
+  switch (provider) {
+    case "groq":
+      return callGroqModel(model, userPrompt);
+    case "gemini":
+      return callGeminiModel(model, userPrompt);
+    case "openrouter":
+      return callOpenRouterModel(model, userPrompt);
+    case "huggingface":
+      return callHuggingFaceModel(model, userPrompt);
+  }
+}
 
 export async function generateComposerDraftWithFallback(brief: string): Promise<AiComposerFillResponse> {
   const userPrompt =
@@ -163,22 +197,39 @@ export async function generateComposerDraftWithFallback(brief: string): Promise<
     "Write a friendly weekly newsletter post highlighting one classic cocktail, one seasonal idea, and a short tip for home bartenders.";
   const errors: string[] = [];
 
-  for (const provider of ORDER) {
-    try {
-      let raw: string;
-      if (provider === "groq") {
-        raw = await callGroq(userPrompt);
-      } else if (provider === "gemini") {
-        raw = await callGemini(userPrompt);
-      } else {
-        raw = await callOpenRouter(userPrompt);
+  for (const provider of AI_PROVIDER_ORDER) {
+    if (!isProviderConfigured(provider)) {
+      continue;
+    }
+
+    const models = getModelsForProvider(provider);
+    let skipProvider = false;
+
+    for (const model of models) {
+      try {
+        const raw = await callProviderModel(provider, model, userPrompt);
+        const parsed = extractJsonObject(raw);
+        const payload = toPayload(parsed);
+        return { ...payload, providerUsed: provider, modelUsed: model };
+      } catch (e) {
+        const status = e instanceof AiProviderError ? e.status : undefined;
+        const msg = e instanceof Error ? e.message : String(e);
+        errors.push(`${provider}/${model}: ${msg}`);
+
+        if (shouldSkipProviderOnError(status)) {
+          skipProvider = true;
+          break;
+        }
+
+        if (!isRetriableAiError(status)) {
+          skipProvider = true;
+          break;
+        }
       }
-      const parsed = extractJsonObject(raw);
-      const payload = toPayload(parsed);
-      return { ...payload, providerUsed: provider };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`${provider}: ${msg}`);
+    }
+
+    if (skipProvider) {
+      continue;
     }
   }
 

@@ -1,10 +1,6 @@
 /** CSV download of active + pending subscribers for offline analysis. */
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import {
-  getAdminSessionCookieName,
-  verifyAdminSessionValue,
-} from "@/lib/admin-session";
+import { assertAdminSession } from "@/lib/admin-api-auth";
 import { listAllSubscribers, listPendingSubscribers } from "@/lib/newsletter/repository";
 
 function escapeCsv(value: string): string {
@@ -13,10 +9,7 @@ function escapeCsv(value: string): string {
 }
 
 export async function GET(): Promise<Response> {
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(getAdminSessionCookieName())?.value;
-  const allowed = verifyAdminSessionValue(sessionValue);
-  if (!allowed) {
+  if (!(await assertAdminSession())) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
 

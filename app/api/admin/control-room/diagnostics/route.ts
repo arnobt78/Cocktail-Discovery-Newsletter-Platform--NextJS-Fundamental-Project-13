@@ -31,6 +31,7 @@ export async function GET(request: Request): Promise<
             groq: boolean;
             gemini: boolean;
             openrouter: boolean;
+            huggingface: boolean;
           };
         };
         serverProbes: Array<{
@@ -117,6 +118,7 @@ export async function GET(request: Request): Promise<
         groq: Boolean(process.env.GROQ_API_KEY),
         gemini: Boolean(process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY),
         openrouter: Boolean(process.env.OPENROUTER_API_KEY),
+        huggingface: Boolean(process.env.HUGGINGFACE_API_KEY),
       },
     },
     serverProbes,

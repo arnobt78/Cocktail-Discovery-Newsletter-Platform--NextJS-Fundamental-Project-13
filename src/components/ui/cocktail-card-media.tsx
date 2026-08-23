@@ -17,6 +17,7 @@ const CONTAIN_IMG_STYLE = {
 /**
  * Fixed-height card image: background blur uses fill; foreground uses intrinsic
  * size + max bounds + flex min-w-0 so layout does not briefly expand to full width.
+ * List cards omit priority so next/image lazy-loads and limits bot-driven transform quota.
  */
 export function CocktailCardMedia({
   src,

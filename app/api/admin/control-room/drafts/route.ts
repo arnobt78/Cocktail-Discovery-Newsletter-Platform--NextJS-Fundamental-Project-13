@@ -1,10 +1,6 @@
 /** Composer drafts: PATCH fields or DELETE one / all. */
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  getAdminSessionCookieName,
-  verifyAdminSessionValue,
-} from "@/lib/admin-session";
+import { assertAdminSession } from "@/lib/admin-api-auth";
 import {
   clearBroadcastDrafts,
   deleteBroadcastDraft,
@@ -12,16 +8,10 @@ import {
 } from "@/lib/newsletter/repository";
 import type { BroadcastAudience, BroadcastDraft } from "@/types/newsletter";
 
-async function ensureAuth(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(getAdminSessionCookieName())?.value;
-  return verifyAdminSessionValue(sessionValue);
-}
-
 export async function PATCH(
   request: Request,
 ): Promise<NextResponse<{ ok: boolean; message: string; draft?: BroadcastDraft }>> {
-  if (!(await ensureAuth())) {
+  if (!(await assertAdminSession())) {
     return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
   }
 
@@ -61,7 +51,7 @@ export async function PATCH(
 }
 
 export async function DELETE(request: Request): Promise<NextResponse<{ ok: boolean; message: string }>> {
-  if (!(await ensureAuth())) {
+  if (!(await assertAdminSession())) {
     return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
   }
 

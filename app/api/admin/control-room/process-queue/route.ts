@@ -1,15 +1,11 @@
 /** Worker-style POST: sends due queue items whose schedule ≤ now. */
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { assertAdminSession } from "@/lib/admin-api-auth";
 import { dispatchBroadcast } from "@/lib/newsletter/broadcast-dispatch";
 import {
   listDueBroadcastQueueItems,
   updateBroadcastQueueItem,
 } from "@/lib/newsletter/repository";
-import {
-  getAdminSessionCookieName,
-  verifyAdminSessionValue,
-} from "@/lib/admin-session";
 
 export async function POST(request: Request): Promise<NextResponse<{ ok: boolean; message: string; processed: number }>> {
   const secret = process.env.CRON_DIGEST_SECRET;
@@ -21,9 +17,7 @@ export async function POST(request: Request): Promise<NextResponse<{ ok: boolean
   }
 
   const provided = request.headers.get("x-cron-secret") ?? "";
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(getAdminSessionCookieName())?.value;
-  const hasAdminSession = verifyAdminSessionValue(sessionValue);
+  const hasAdminSession = await assertAdminSession();
   if (provided !== secret && !hasAdminSession) {
     return NextResponse.json(
       { ok: false, message: "Unauthorized.", processed: 0 },

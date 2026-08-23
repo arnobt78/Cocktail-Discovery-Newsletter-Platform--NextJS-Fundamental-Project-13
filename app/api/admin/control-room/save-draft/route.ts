@@ -1,19 +1,13 @@
 /** Upsert a draft record from the composer form JSON. */
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  getAdminSessionCookieName,
-  verifyAdminSessionValue,
-} from "@/lib/admin-session";
+import { assertAdminSession } from "@/lib/admin-api-auth";
 import { saveBroadcastDraft } from "@/lib/newsletter/repository";
 import type { BroadcastAudience, BroadcastDraft } from "@/types/newsletter";
 
 export async function POST(
   request: Request,
 ): Promise<NextResponse<{ ok: boolean; message: string; draft?: BroadcastDraft }>> {
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(getAdminSessionCookieName())?.value;
-  if (!verifyAdminSessionValue(sessionValue)) {
+  if (!(await assertAdminSession())) {
     return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
   }
 

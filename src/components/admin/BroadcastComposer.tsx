@@ -163,9 +163,12 @@ export function BroadcastComposer({
   const [aiBrief, setAiBrief] = useState("");
 
   useEffect(() => {
-    setDrafts(initialDrafts);
-    setHistory(initialHistory);
-    setQueue(initialQueue);
+    const frameId = window.requestAnimationFrame(() => {
+      setDrafts(initialDrafts);
+      setHistory(initialHistory);
+      setQueue(initialQueue);
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, [initialDrafts, initialHistory, initialQueue]);
 
   const aiMutation = useMutation({
@@ -186,6 +189,7 @@ export function BroadcastComposer({
           ctaUrl?: string;
           audience?: BroadcastAudience;
           providerUsed: string;
+          modelUsed: string;
         };
       };
       if (!res.ok || !json.ok || !json.data) {
@@ -207,7 +211,7 @@ export function BroadcastComposer({
       setAiBrief("");
       showToast(
         true,
-        `Draft ideas filled via ${data.providerUsed}. Review every field before sending.`,
+        `Draft ideas filled via ${data.providerUsed} (${data.modelUsed}). Review every field before sending.`,
         "AI draft helper",
       );
     },

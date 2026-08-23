@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
-/** Security headers on all routes; image remotePatterns whitelist TheCocktailDB; allowedDevOrigins fixes Playwright/127.0.0.1 HMR. */
+/** Security headers on all routes; image remotePatterns whitelist TheCocktailDB; allowedDevOrigins fixes Playwright/127.0.0.1 HMR. Sentry tunnelRoute /api/monitoring is wired in withSentryConfig below. */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -35,4 +36,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  tunnelRoute: "/api/monitoring",
+  silent: true,
+  telemetry: false,
+  widenClientFileUpload: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+  },
+});
